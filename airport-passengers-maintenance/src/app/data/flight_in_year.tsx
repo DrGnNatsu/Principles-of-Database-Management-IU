@@ -89,7 +89,7 @@ const FlightInYear: React.FC = () => {
     d3.select("#bar-chart-flight-in-year").selectAll("*").remove();
 
     const margin = { top: 40, right: 20, bottom: 100, left: 60 };
-    const width = 1500 - margin.left - margin.right;
+    const width = 1100 - margin.left - margin.right;
     const height = 600 - margin.top - margin.bottom;
 
     const svg = d3
@@ -98,7 +98,8 @@ const FlightInYear: React.FC = () => {
       .attr("width", width + margin.left + margin.right)
       .attr("height", height + margin.top + margin.bottom)
       .append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
+      .attr("transform", `translate(${margin.left},${margin.top})`)
+      .attr("color", "black");
 
     const x = d3
       .scaleBand()
@@ -129,6 +130,7 @@ const FlightInYear: React.FC = () => {
         .domain(filteredData.map(d => d.Day))
         .range(newRange as [number, number])
         .padding(0.1);
+        
 
       // Update the x-axis with the new scale
       svg
@@ -191,7 +193,7 @@ const FlightInYear: React.FC = () => {
   return (
     <div>
       <div>
-        <label>
+        <label className='text-black'>
           Select Year:
           <select value={year} onChange={e => setYear(e.target.value)} className="text-black">
             <option value="2020">2020</option>
@@ -200,7 +202,7 @@ const FlightInYear: React.FC = () => {
             <option value="2023">2023</option>
           </select>
         </label>
-        <label>
+        <label className='text-black'>
           Select State:
           <select value={selectedState} onChange={e => setSelectedState(e.target.value)} className="text-black">
             <option value="All">All</option>
@@ -211,7 +213,7 @@ const FlightInYear: React.FC = () => {
             ))}
           </select>
         </label>
-        <label>
+        <label className='text-black'>
           Select Season:
           <select value={season} onChange={e => setSeason(e.target.value)} className="text-black">
             <option value="All">All</option>
