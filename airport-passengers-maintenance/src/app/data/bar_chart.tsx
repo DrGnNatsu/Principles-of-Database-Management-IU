@@ -69,9 +69,9 @@ import './bar_chart.css'
 
             console.log("Sorted and sliced data for rendering:", sortedData);
 
-            const margin = {top: 40, right: 20, bottom: 100, left: 60};
+            const margin = {top: 40, right: 20, bottom: 50, left: 60};
             const width = 1000 -margin.left-margin.right;
-            const height = 500 -margin.top-margin.bottom;
+            const height = 400 -margin.top-margin.bottom;
 
             const svg = d3
                     .select("#barChart")
@@ -160,21 +160,16 @@ import './bar_chart.css'
                 .attr("color", "black")
                 .call(d3.axisLeft(y).ticks(10));
 
-            // Add Chart title
-            svg
-                .append("text")
-                .attr("x", width / 2)
-                .attr("y", margin.top/2 - 30)
-                .attr("text-anchor", "middle")
-                .attr("font-size", "16px")
-                .attr("font-weight", "bold")
-                .attr("color", "black")
-                .text(`Flights ${year} (Arr/Dep flights)`);
-
         };
 
     return(
         <div>
+            <h2 className="text-3xl font-semibold mb-4 text-center text-black">
+                The total of flights across European countries in {year}
+            </h2>
+            <p className="mb-6 text-center text-gray-600">
+                Explore flight trends across European countries by selecting the desired year, sorting order, then choosing the top countries to show. 
+            </p>
             {/* Controls container */}
             <div className="controls">
                 <div className="control">
@@ -218,6 +213,7 @@ import './bar_chart.css'
                         <option value={42}>All</option>
                     </select>
                 </div>
+
             </div>
 
         {/* Bar chart container */}
