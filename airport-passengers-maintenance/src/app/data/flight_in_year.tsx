@@ -10,25 +10,33 @@ interface DataPoint {
 }
 
 const FlightInYear: React.FC = () => {
-  const [dataset, setDataset] = useState<DataPoint[]>([]); // Holds data for the selected year
-  const [filteredData, setFilteredData] = useState<DataPoint[]>([]); // Data after filtering
-  const [year, setYear] = useState("2020"); // Selected year
-  const [selectedState, setSelectedState] = useState("All");
-  const [season, setSeason] = useState("All");
+  const [dataset, setDataset] = useState<DataPoint[]>([]);
+  const [filteredData, setFilteredData] = useState<DataPoint[]>([]);
+  const [year, setYear] = useState("2020");
+  const [selectedState, setSelectedState] = useState(""); // Remove initial "All"
+  const [season, setSeason] = useState("Spring"); // Set initial season to "Spring"
   const [dateRange, setDateRange] = useState<[string, string]>([
     "1/1/2020",
     "12/31/2020",
   ]);
+
+  // Add new useEffect to set initial state after data loads
+  useEffect(() => {
+    if (dataset.length > 0 && selectedState === "") {
+      const firstState = [...new Set(dataset.map((d) => d.Entity))][0];
+      setSelectedState(firstState);
+    }
+  }, [dataset]);
 
   useEffect(() => {
     const newDateRange: [string, string] =
       year === "2020"
         ? ["1/1/2020", "12/31/2020"]
         : year === "2021"
-        ? ["1/1/2021", "12/31/2021"]
-        : year === "2022"
-        ? ["1/1/2022", "12/31/2022"]
-        : ["1/1/2023", "12/31/2023"];
+          ? ["1/1/2021", "12/31/2021"]
+          : year === "2022"
+            ? ["1/1/2022", "12/31/2022"]
+            : ["1/1/2023", "12/31/2023"];
     setDateRange(newDateRange);
   }, [year]);
 
@@ -110,7 +118,7 @@ const FlightInYear: React.FC = () => {
       .attr("width", width + margin.left + margin.right)
       .attr("height", height + margin.top + margin.bottom)
       .append("g")
-      .attr("transform", `translate(50,${margin.top})`);
+      .attr("transform", `translate(${margin.left},${margin.top})`); // Fixed translation
 
     const x = d3
       .scaleBand()
@@ -128,8 +136,8 @@ const FlightInYear: React.FC = () => {
       .zoom<SVGGElement, unknown>()
       .scaleExtent([1, 10])
       .translateExtent([
-        [0, 0],
-        [width, height],
+        [-margin.left, -margin.top],
+        [width + margin.right, height + margin.bottom]
       ])
       .extent([
         [0, 0],
@@ -151,21 +159,34 @@ const FlightInYear: React.FC = () => {
 
       // Update the x-axis with the new scale
       svg
-        .select<SVGGElement>(".x-axis") // Cast to <g> element
+        .select<SVGGElement>(".x-axis")
         .call(d3.axisBottom(newX));
 
-      // Update bars
-      const bars = svg.selectAll<SVGRectElement, DataPoint>(".bar");
-      bars.attr("x", (d) => newX(d.Day)!).attr("width", newX.bandwidth());
+      // Update bars and their positions
+      svg.selectAll<SVGRectElement, DataPoint>(".bar")
+        .attr("x", (d) => newX(d.Day) || 0)
+        .attr("width", newX.bandwidth());
     }
 
+    // Create a clip path
+    svg.append("defs")
+      .append("clipPath")
+      .attr("id", "clip")
+      .append("rect")
+      .attr("width", width)
+      .attr("height", height);
+
+    // Create a container for the bars with clip path
+    const barsGroup = svg.append("g")
+      .attr("clip-path", "url(#clip)");
+
     // Bars logic
-    svg
+    barsGroup
       .selectAll("rect")
       .data(filteredData)
       .join("rect")
       .attr("class", "bar")
-      .attr("x", (d) => x(d.Day)!)
+      .attr("x", (d) => x(d.Day) || 0)
       .attr("y", (d) => y(d.Flights))
       .attr("width", x.bandwidth())
       .attr("height", (d) => height - y(d.Flights))
@@ -191,7 +212,12 @@ const FlightInYear: React.FC = () => {
       .attr("transform", "rotate(-45)")
       .style("text-anchor", "end");
 
-    svg.append("g").attr("class", "y-axis").call(d3.axisLeft(y));
+    svg
+      .append("g")
+      .attr("class", "y-axis")
+      .call(d3.axisLeft(y));
+
+    // Chart title
     svg
       .append("text")
       .attr("x", width / 2)
@@ -223,7 +249,7 @@ const FlightInYear: React.FC = () => {
             onChange={(e) => setSelectedState(e.target.value)}
             className="text-black"
           >
-            <option value="All">All</option>
+            {/* Remove the "All" option */}
             {[...new Set(dataset.map((d) => d.Entity))].map((state) => (
               <option key={state} value={state}>
                 {state}
@@ -238,7 +264,7 @@ const FlightInYear: React.FC = () => {
             onChange={(e) => setSeason(e.target.value)}
             className="text-black"
           >
-            <option value="All">All</option>
+            {/* Remove the "All" option */}
             <option value="Spring">Spring</option>
             <option value="Summer">Summer</option>
             <option value="Fall">Fall</option>
@@ -246,7 +272,7 @@ const FlightInYear: React.FC = () => {
           </select>
         </label>
       </div>
-      <div className="flex  text-black" id="bar-chart-flight-in-year"></div>
+      <div className="flex text-black" id="bar-chart-flight-in-year"></div>
       <div
         id="tooltip"
         style={{
