@@ -38,13 +38,13 @@ export default function HeatMap({
 
   // Define country group mapping with duplicates removed
   const country_map: { [key: string]: string[] } = {
-    'A to B': Array.from(new Set(['Austria', 'Armenia', 'Belgium', 'Bosnia-Herzegovina', 'Bulgaria'])),
+    'A to B': Array.from(new Set(['Austria', 'Armenia', 'Belgium', 'Bosnia Herzegovina', 'Bulgaria'])),
     'C to F': Array.from(new Set(['Croatia', 'Cyprus', 'Czech Republic', 'Denmark', 'Estonia', 'Finland', 'France'])),
     'G to I': Array.from(new Set(['Georgia', 'Germany', 'Greece', 'Hungary', 'Ireland', 'Israel', 'Italy'])),
     'L to M': Array.from(new Set(['Latvia', 'Lithuania', 'Luxembourg', 'Malta', 'Moldova', 'Morocco'])),
     'N to R': Array.from(new Set(['Netherlands', 'North Macedonia', 'Norway', 'Poland', 'Portugal', 'Romania'])),
     'S': Array.from(new Set(['Serbia & Montenegro', 'Slovakia', 'Slovenia', 'Spain', 'Sweden', 'Switzerland'])),
-    'T to Z': Array.from(new Set(['Turkey', 'Ukraine', 'United Kingdom', '-Total Network Manager Area']))
+    'T to Z': Array.from(new Set(['Turkey', 'Ukraine', 'United Kingdom', 'Total Network Manager Area']))
   };
 
   // Initialize tooltip once when component mounts
