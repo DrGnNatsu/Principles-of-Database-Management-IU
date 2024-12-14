@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import * as d3 from "d3";
 
-// Define the structure of a data point
 interface DataPoint {
   Entity: string;
   Week: number;
@@ -13,14 +12,13 @@ const FlightInYear: React.FC = () => {
   const [dataset, setDataset] = useState<DataPoint[]>([]);
   const [filteredData, setFilteredData] = useState<DataPoint[]>([]);
   const [year, setYear] = useState("2020");
-  const [selectedState, setSelectedState] = useState(""); // Remove initial "All"
-  const [season, setSeason] = useState("Spring"); // Set initial season to "Spring"
+  const [selectedState, setSelectedState] = useState("");
+  const [season, setSeason] = useState("Spring");
   const [dateRange, setDateRange] = useState<[string, string]>([
-    "1/1/2020",
-    "12/31/2020",
+    "01/01/2020",
+    "31/12/2020",
   ]);
 
-  // Add new useEffect to set initial state after data loads
   useEffect(() => {
     if (dataset.length > 0 && selectedState === "") {
       const firstState = [...new Set(dataset.map((d) => d.Entity))][0];
@@ -31,26 +29,23 @@ const FlightInYear: React.FC = () => {
   useEffect(() => {
     const newDateRange: [string, string] =
       year === "2020"
-        ? ["1/1/2020", "12/31/2020"]
+        ? ["01/01/2020", "31/12/2020"]
         : year === "2021"
-          ? ["1/1/2021", "12/31/2021"]
+          ? ["01/01/2021", "31/12/2021"]
           : year === "2022"
-            ? ["1/1/2022", "12/31/2022"]
-            : ["1/1/2023", "12/31/2023"];
+            ? ["01/01/2022", "31/12/2022"]
+            : ["01/01/2023", "31/12/2023"];
     setDateRange(newDateRange);
   }, [year]);
 
-  // Load data when the year changes
   useEffect(() => {
     loadData(year);
   }, [year]);
 
-  // Reapply filters whenever dataset or filter options change
   useEffect(() => {
     applyFilters();
   }, [dataset, selectedState, season, dateRange]);
 
-  // Update the chart whenever filtered data changes
   useEffect(() => {
     renderChart();
   }, [filteredData]);
@@ -60,12 +55,22 @@ const FlightInYear: React.FC = () => {
       console.log(`Loading data for year: ${selectedYear}`);
       const rawData = await d3.csv(
         `/dataset/csv${selectedYear}.csv`,
-        (d: any) => ({
-          Entity: d.Entity as string,
-          Week: +d.Week,
-          Day: d.Day as string,
-          Flights: +d.Flights,
-        })
+        (d: any) => {
+          // Convert date from m/d/yyyy to dd/mm/yyyy
+          const date = new Date(d.Day);
+          const formattedDay = date.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          });
+
+          return {
+            Entity: d.Entity as string,
+            Week: +d.Week,
+            Day: formattedDay,
+            Flights: +d.Flights,
+          };
+        }
       );
 
       console.log("Data loaded successfully:", rawData);
@@ -90,22 +95,35 @@ const FlightInYear: React.FC = () => {
           Fall: [7, 8, 9],
           Winter: [10, 11, 12],
         }[season] || [];
-      data = data.filter((d) =>
-        seasonMonths.includes(new Date(d.Day).getMonth() + 1)
-      );
+
+      data = data.filter((d) => {
+        const [day, month] = d.Day.split('/').map(Number);
+        return seasonMonths.includes(month);
+      });
     }
 
-    const [startDate, endDate] = dateRange.map((d) => new Date(d));
+    const [startDate, endDate] = dateRange.map((d) => {
+      const [day, month, year] = d.split('/').map(Number);
+      return new Date(year, month - 1, day);
+    });
+
     data = data.filter((d) => {
-      const date = new Date(d.Day);
+      const [day, month, year] = d.Day.split('/').map(Number);
+      const date = new Date(year, month - 1, day);
       return date >= startDate && date <= endDate;
     });
 
-    setFilteredData(data); // Update filtered data
+    // Sort data by date (Day) in ascending order
+    data.sort((a, b) => {
+      const dateA = new Date(a.Day.split('/').reverse().join('-')); // Convert to yyyy-mm-dd format
+      const dateB = new Date(b.Day.split('/').reverse().join('-'));
+      return dateA.getTime() - dateB.getTime();
+    });
+
+    setFilteredData(data);
   };
 
   const renderChart = () => {
-    // Clear previous chart
     d3.select("#bar-chart-flight-in-year").selectAll("*").remove();
 
     const margin = { top: 40, right: 20, bottom: 100, left: 50 };
@@ -118,7 +136,7 @@ const FlightInYear: React.FC = () => {
       .attr("width", width + margin.left + margin.right)
       .attr("height", height + margin.top + margin.bottom)
       .append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`); // Fixed translation
+      .attr("transform", `translate(${margin.left},${margin.top})`);
 
     const x = d3
       .scaleBand()
@@ -157,18 +175,15 @@ const FlightInYear: React.FC = () => {
         .range(newRange as [number, number])
         .padding(0.1);
 
-      // Update the x-axis with the new scale
       svg
         .select<SVGGElement>(".x-axis")
         .call(d3.axisBottom(newX));
 
-      // Update bars and their positions
       svg.selectAll<SVGRectElement, DataPoint>(".bar")
         .attr("x", (d) => newX(d.Day) || 0)
         .attr("width", newX.bandwidth());
     }
 
-    // Create a clip path
     svg.append("defs")
       .append("clipPath")
       .attr("id", "clip")
@@ -176,11 +191,9 @@ const FlightInYear: React.FC = () => {
       .attr("width", width)
       .attr("height", height);
 
-    // Create a container for the bars with clip path
     const barsGroup = svg.append("g")
       .attr("clip-path", "url(#clip)");
 
-    // Bars logic
     barsGroup
       .selectAll("rect")
       .data(filteredData)
@@ -202,7 +215,6 @@ const FlightInYear: React.FC = () => {
         d3.select("#tooltip").style("display", "none");
       });
 
-    // Axis logic
     svg
       .append("g")
       .attr("class", "x-axis")
@@ -217,7 +229,6 @@ const FlightInYear: React.FC = () => {
       .attr("class", "y-axis")
       .call(d3.axisLeft(y));
 
-    // Chart title
     svg
       .append("text")
       .attr("x", width / 2)
@@ -249,7 +260,6 @@ const FlightInYear: React.FC = () => {
             onChange={(e) => setSelectedState(e.target.value)}
             className="text-black"
           >
-            {/* Remove the "All" option */}
             {[...new Set(dataset.map((d) => d.Entity))].map((state) => (
               <option key={state} value={state}>
                 {state}
@@ -264,7 +274,6 @@ const FlightInYear: React.FC = () => {
             onChange={(e) => setSeason(e.target.value)}
             className="text-black"
           >
-            {/* Remove the "All" option */}
             <option value="Spring">Spring</option>
             <option value="Summer">Summer</option>
             <option value="Fall">Fall</option>
