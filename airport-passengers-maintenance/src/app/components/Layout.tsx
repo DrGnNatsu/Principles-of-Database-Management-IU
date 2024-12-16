@@ -24,7 +24,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 <div style={styles.websiteName}>Skyline Serenade</div>
                 <ul style={styles.ul}>
                     <li style={styles.li}><Link href="/" style={styles.link}>Home</Link></li>
-                    <li style={styles.li}><Link href="/data" style={styles.link}>Data</Link></li>
+                    <li style={styles.li}><Link href="/earth" style={styles.link}>Data</Link></li>
                     <li style={styles.li}><Link href="/view" style={styles.link}>View</Link></li>
                     <li style={styles.li}><Link href="/flight" style={styles.link}>Flight</Link></li>
                     <li style={styles.li}><Link href="/employee" style={styles.link}>Employee</Link></li>
