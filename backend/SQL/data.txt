@@ -1,0 +1,66 @@
+INSERT INTO flight_status (statusid, status) VALUES
+('ST001', 'On Time'),
+('ST002', 'Delayed'),
+('ST003', 'Cancelled');
+
+INSERT INTO flight_schedule (scheduleid, statusid, departure_date, arrival_date, departure, arrival, flight_duration) VALUES
+                                                                                                         ('FS001', 'ST001', '2024-12-01 10:00:00', '2024-12-01 12:00:00', 'Cam Ranh', 'Ho Chi Minh', 2),
+                                                                                                         ('FS002', 'ST002', '2024-12-02 14:00:00', '2024-12-02 17:00:00', 'Cam Ranh', 'Ha Noi', 3),
+                                                                                                         ('FS003', 'ST003', '2024-12-03 08:00:00', '2024-12-03 09:30:00', 'Cam Ranh', 'Da Nang', 1.5),
+                                                                                                         ('FS004', 'ST003', '2024-12-03 08:00:00', '2024-12-04 09:30:00', 'Cam Ranh', 'Da Nang', 1.5);
+
+INSERT INTO airline (airlineid, airline_name) VALUES
+('AL001', 'Vietnam Airlines'),
+('AL002', 'Bamboo Airways'),
+('AL003', 'VietJet Air'); # if we need more data using the data in Airline.txt
+
+INSERT INTO airport (airportid, airport_name, country, city) VALUES
+('AP001', 'Noi Bai International Airport', 'Viet Nam', 'Hanoi'),
+('AP002', 'Tan Son Nhat International Airport', 'Viet Nam', 'Ho Chi Minh City'),
+('AP003', 'Da Nang International Airport', 'Viet Nam', 'Da Nang'); # if we need more data using the data in Airport.txt
+
+INSERT INTO seat_class (class_type, base_price) VALUES
+('Economy', 1000000.00),
+('Business', 2000000.00),
+('First Class', 3000000.00);
+
+INSERT INTO seat (seat_number, class_type) VALUES
+('SE001', 'First Class'),
+('SE002', 'First Class'),
+('SE003', 'First Class'); # if we need more data using the data in Seat.txt
+
+INSERT INTO passenger (passengerid, first_name, last_name, age, date_of_birth, nationality, passport_number, email, phone_number, address) VALUES
+('PA001', 'Alice', 'Nguyen', 25, '1999-05-20', 'Vietnam', 'A12345678', 'alice@gmail.com', '0901234567', 'Hanoi, Vietnam'),
+('PA002', 'Bob', 'Tran', 32, '1992-07-15', 'Vietnam', 'B98765432', 'bob@gmail.com', '0937654321', 'Ho Chi Minh City, Vietnam'),
+('PA003', 'Charlie', 'Pham', 40, '1984-10-10', 'Vietnam', 'C11122334', 'charlie@gmail.com', '0978123456', 'Da Nang, Vietnam');
+
+INSERT INTO employee (employeeid, first_name, last_name, age, gender, role, date_of_birth, salary, address, phone_number) VALUES
+('EM001', 'John', 'Doe', 30, 'M', 'Security Officer', '1994-03-12', 8000000.00, 'Hanoi, Vietnam', '0123456789'),
+('EM002', 'Jane', 'Smith', 28, 'F', 'Customer Service Agent', '1996-06-15', 7500000.00, 'Ho Chi Minh City, Vietnam', '0987654321'),
+('EM003', 'Michael', 'Johnson', 35, 'M', 'Ground Crew', '1989-09-10', 8500000.00, 'Da Nang, Vietnam', '0912345678');
+
+INSERT INTO booking (bookingid, booking_date, payment_status) VALUES
+('BK001', '2024-11-25 10:30:00', 'Paid'),
+('BK002', '2024-11-26 15:45:00', 'Pending'),
+('BK003', '2024-11-27 09:00:00', 'Cancelled');
+
+INSERT INTO airport_staff (airport_staff_id, airportid, employeeid, status, role) VALUES
+('AS001', 'AP001', 'EM001', 'Active', 'Security'),
+('AS002', 'AP002', 'EM002', 'Active', 'Customer Service'),
+('AS003', 'AP003', 'EM003', 'Inactive', 'Ground Crew');
+
+INSERT INTO flight_base (flightid, airportid, airlineid, scheduleid, gate_number) VALUES
+('FB001', 'AP001', 'AL001', 'SE001', 1),
+('FB002', 'AP002', 'AL002', 'SE002', 2),
+('FB003', 'AP003', 'AL003', 'SE003', 3);
+
+INSERT INTO ticket (ticketid, passengerid, seat_number, bookingid, flightid, final_price, baggage_weight) VALUES
+('TK001', 'PA001', 'SE001', 'BK001', 'FB001', 1200000, 20),
+('TK002', 'PA002', 'SE002', 'BK002', 'FB002', 1500000, 15),
+('TK003', 'PA003', 'SE003', 'BK003', 'FB003', 900000, 10);
+
+INSERT INTO flight_crew (flight_crew_id, employeeid, flightid, role, status) VALUES
+('FC001', 'EM001', 'FB001', 'Pilot', 'Active'),
+('FC002', 'EM002', 'FB002', 'Co-Pilot', 'Active'),
+('FC003', 'EM003', 'FB003', 'Flight Attendant', 'Active');
+

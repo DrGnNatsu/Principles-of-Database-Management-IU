@@ -38,13 +38,13 @@ export default function HeatMap({
 
   // Define country group mapping with duplicates removed
   const country_map: { [key: string]: string[] } = {
-    'A to B': Array.from(new Set(['Austria', 'Armenia', 'Belgium', 'Bosnia-Herzegovina', 'Bulgaria'])),
+    'A to B': Array.from(new Set(['Austria', 'Armenia', 'Belgium', 'Bosnia Herzegovina', 'Bulgaria'])),
     'C to F': Array.from(new Set(['Croatia', 'Cyprus', 'Czech Republic', 'Denmark', 'Estonia', 'Finland', 'France'])),
     'G to I': Array.from(new Set(['Georgia', 'Germany', 'Greece', 'Hungary', 'Ireland', 'Israel', 'Italy'])),
     'L to M': Array.from(new Set(['Latvia', 'Lithuania', 'Luxembourg', 'Malta', 'Moldova', 'Morocco'])),
     'N to R': Array.from(new Set(['Netherlands', 'North Macedonia', 'Norway', 'Poland', 'Portugal', 'Romania'])),
     'S': Array.from(new Set(['Serbia & Montenegro', 'Slovakia', 'Slovenia', 'Spain', 'Sweden', 'Switzerland'])),
-    'T to Z': Array.from(new Set(['Turkey', 'Ukraine', 'United Kingdom', '-Total Network Manager Area']))
+    'T to Z': Array.from(new Set(['Turkey', 'Ukraine', 'United Kingdom', 'Total Network Manager Area']))
   };
 
   // Initialize tooltip once when component mounts
@@ -218,31 +218,67 @@ export default function HeatMap({
       tooltip.transition().duration(200).style('opacity', 0);
     };
 
-    // Text wrapping function
-    // const wrap_text = (text: any, width: number) => {
-    //   text.each(function(this: SVGTextElement) {
-    //     const textElement = d3.select(this);
-    //     const words = textElement.text().split(/\s+/).reverse();
-    //     let word: string | undefined;
-    //     let line: string[] = [];
-    //     let lineHeight = 1.1; 
-    //     const y = textElement.attr("y");
-    //     const dy = parseFloat(textElement.attr("dy")) || 0;
-    //     let tspan = textElement.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", `${dy}em`);
-        
-    //     while ((word = words.pop())) {
-    //       line.push(word);
-    //       tspan.text(line.join(" "));
-    //       if (tspan.node()?.getComputedTextLength()! > width) {
-    //         line.pop();
-    //         tspan.text(line.join(" "));
-    //         line = [word];
-    //         tspan = textElement.append("tspan").attr("x", 0).attr("y", y).attr("dy", `${++lineHeight}em`).text(word);
-    //       }
-    //     }
-    //   });
-    // };
-
+    function wrap_text(
+      text: d3.Selection<SVGTextElement, unknown, null, undefined>, 
+      width: number
+    ): void {
+      text.each(function () {
+        const textElement = d3.select(this as SVGTextElement);
+        const original_text = textElement.text();
+    
+        // Special handling for "-Total Network Manager Area"
+        if (original_text.includes("-Total Network Manager Area")) {
+          textElement.text(null)
+            .append("tspan")
+            .attr("x", 0)
+            .attr("y", textElement.attr("y"))
+            .attr("dy", "0em")
+            .text("-Total")
+            .append("tspan")
+            .attr("x", 0)
+            .attr("y", textElement.attr("y"))
+            .attr("dy", "1.1em")
+            .text("Network")
+            .append("tspan")
+            .attr("x", 0)
+            .attr("y", textElement.attr("y"))
+            .attr("dy", "2.2em")
+            .text("Manager Area");
+          return;
+        }
+    
+        // General text wrapping logic
+        const words = original_text.split(/[-\s]+/).reverse(); // Split on whitespace or hyphens
+        let word: string | undefined;
+        let line: string[] = [];
+        const lineHeight = 1.1; // ems
+        const y = textElement.attr("y");
+        const dy = parseFloat(textElement.attr("dy") || "0");
+        let tspan = textElement.text(null)
+          .append("tspan")
+          .attr("x", 0)
+          .attr("y", y)
+          .attr("dy", `${dy}em`);
+    
+        while ((word = words.pop())) {
+          line.push(word);
+          tspan.text(line.join(" "));
+    
+          if (tspan.node() && tspan.node()!.getComputedTextLength() > width) {
+            line.pop();
+            tspan.text(line.join(" "));
+            line = [word];
+            tspan = textElement.append("tspan")
+              .attr("x", 0)
+              .attr("y", y)
+              .attr("dy", `${lineHeight}em`)
+              .text(word);
+          }
+        }
+      });
+    }
+    
+    
     // X Axis
     svg.append('g')
       .attr('transform', `translate(0,${svg_height - margin_bottom})`)
@@ -252,15 +288,19 @@ export default function HeatMap({
       .style("text-anchor", "end")
       .style("fill", "black")
       .style("font-size", "13"); // Set text color to black
-
+    
     // Y Axis 
     svg.append('g')
       .attr('transform', `translate(${margin_left},0)`)
       .call(d3.axisLeft(y).tickSize(0))
-      .selectAll("text")
+      .selectAll<SVGTextElement, unknown>("text")
       .style("fill", "black")
       .style("text-anchor", "end")
-      .style("font-size", "10"); 
+      .style("font-size", "10")
+      .each(function () {
+        const text = d3.select<SVGTextElement, unknown>(this); // Explicitly type individual selections
+        wrap_text(text, margin_left - 10);
+      });
 
     // Axis lines
     svg.selectAll(".domain, .tick line")
@@ -269,18 +309,40 @@ export default function HeatMap({
     // Heatmap cells with rounded corners and dynamic stroke on hover
     svg.selectAll()
       .data(filtered_data, (d: any) => `${d.entity}:${d.week}`)
-      .enter()
-      .append('rect')
-      .attr('x', d => x(String(d.week))!)
-      .attr('y', d => y(d.entity)!)
-      .attr('width', x.bandwidth())
-      .attr('height', y.bandwidth())
-      .attr('rx', 3) // Set horizontal border radius
-      .attr('ry', 3) // Set vertical border radius
-      .style('fill', d => color(d.flights / d.flights_2019_reference))
-      .style('stroke', 'none') // No stroke by default
-      .style('stroke-width', '0') // No stroke width by default
-      .style('opacity', 0.9)
+      .join(
+        enter => {
+          const rect = enter.append('rect')
+            .attr('x', d => x(String(d.week))!)
+            .attr('y', d => y(d.entity)!)
+            .attr('width', x.bandwidth())
+            .attr('height', y.bandwidth())
+            .attr('rx', 3)
+            .attr('ry', 3)
+            .style('fill', d => color(d.flights / d.flights_2019_reference))
+            .style('opacity', 0);
+    
+          rect.transition()
+            .duration(500)
+            .style('opacity', 0.9);
+    
+          return rect;
+        },
+        update =>
+          update
+            .transition()
+            .duration(500)
+            .attr('x', d => x(String(d.week))!)
+            .attr('y', d => y(d.entity)!)
+            .attr('width', x.bandwidth())
+            .attr('height', y.bandwidth())
+            .style('fill', d => color(d.flights / d.flights_2019_reference)),
+        exit =>
+          exit
+            .transition()
+            .duration(500)
+            .style('opacity', 0)
+            .remove()
+      )
       // Tooltip event handlers with dynamic stroke
       .on('mouseover', handle_mouseover)
       .on('mousemove', handle_mousemove)
@@ -341,7 +403,6 @@ export default function HeatMap({
             onChange={handle_country_change}
             className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 text-black"
           >
-            <option value="All">All</option>
             {Object.keys(country_map).map(group => (
               <option key={group} value={group}>
                 {group} ({country_map[group].length} countries)

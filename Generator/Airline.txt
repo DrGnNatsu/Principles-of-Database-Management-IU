@@ -1,0 +1,18 @@
+INSERT INTO airline (airlineid, airline_name) VALUES
+('AL004', 'ANA All Nippon Airways'),
+('AL005', 'Cathay Pacific'),
+('AL006', 'Japan Airlines'),
+('AL007', 'Turkish Airlines'),
+('AL008', 'EVA Air'),
+('AL009', 'Air France'),
+('AL010', 'Swiss International Air Lines'),
+('AL011', 'Korean Air'),
+('AL012', 'Hainan Airlines'),
+('AL013', 'British Airways'),
+('AL014', 'Fiji Airways'),
+('AL015', 'Iberia'),
+('AL016', 'Vistara'),
+('AL017', 'Virgin Atlantic'),
+('AL018', 'Lufthansa'),
+('AL019', 'Etihad Airways'),
+('AL020', 'Saudi Arabian Airlines');

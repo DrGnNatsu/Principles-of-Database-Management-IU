@@ -11,20 +11,43 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                     src={airportBackground}
                     alt="Airport Background"
                     quality={100}
-                    style={{objectFit: "cover"}}
+                    fill
+                    sizes="100vw"
+                    style={{
+                        objectFit: "cover",
+                        objectPosition: "center",
+                    }}
                     priority
                 />
             </div>
             <nav style={styles.nav}>
-                <div style={styles.websiteName}>Booking</div>
+                <div style={styles.websiteName}>Skyline Serenade</div>
                 <ul style={styles.ul}>
                     <li style={styles.li}><Link href="/" style={styles.link}>Home</Link></li>
-                    <li style={styles.li}><Link href="/data" style={styles.link}>Data</Link></li>
+                    <li style={styles.li}><Link href="/earth" style={styles.link}>Data</Link></li>
                     <li style={styles.li}><Link href="/view" style={styles.link}>View</Link></li>
                     <li style={styles.li}><Link href="/flight" style={styles.link}>Flight</Link></li>
+                    <li style={styles.li}><Link href="/employee" style={styles.link}>Employee</Link></li>
                 </ul>
                 <Link href="/flight" passHref>
-                    <button style={styles.flightButton}>Flight Now</button>
+                    <button className="
+                        px-6 py-3 
+                        bg-red-600 text-white 
+                        border-2 border-black 
+                        rounded-lg 
+                        text-xl font-bold 
+                        cursor-pointer 
+                        transition-all duration-300 ease-in-out 
+                        hover:bg-transparent 
+                        hover:text-white
+                        hover:bg-black 
+                        hover:-translate-y-0.5 
+                        hover:shadow-lg
+                        active:translate-y-0
+                        active:shadow-md
+                    ">
+                        Flight Now
+                    </button>
                 </Link>
             </nav>
 
@@ -47,7 +70,7 @@ const styles = {
         top: 0,
         left: 0,
         width: '100%',
-        height: '100%',
+        height: '100vh',
         zIndex: -1,
     },
     nav: {

@@ -1,0 +1,9 @@
+INSERT INTO airport (airportid, airport_name, city, country) VALUES
+('AP004', 'Cam Ranh International Airport', 'Nha Trang', 'Viet Nam'),
+('AP005', 'Phu Quoc International Airport', 'Phu Quoc', 'Viet Nam'),
+('AP006', 'Cat Bi International Airport', 'Hai Phong', 'Viet Nam'),
+('AP007', 'Can Tho International Airport', 'Can Tho', 'Viet Nam'),
+('AP008', 'Vinh International Airport', 'Vinh', 'Viet Nam'),
+('AP009', 'Van Don International Airport', 'Quang Ninh', 'Viet Nam'),
+('AP010', 'Lien Khuong International Airport', 'Da Lat', 'Viet Nam'),
+('AP011', 'Long Thanh International Airport', 'Dong Nai', 'Viet Nam');

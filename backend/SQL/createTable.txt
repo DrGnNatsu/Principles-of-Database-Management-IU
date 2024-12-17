@@ -1,0 +1,115 @@
+CREATE TABLE airline (
+                         airlineid VARCHAR(5) PRIMARY KEY NOT Null,
+                         airline_name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE airport (
+                         airportid VARCHAR(5) PRIMARY KEY NOT NULL,
+                         airport_name VARCHAR(100) NOT NULL,
+                         city VARCHAR(100) NOT NULL,
+                         country VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE seat_class (
+                            class_type VARCHAR(100) PRIMARY KEY NOT NULL,
+                            base_price FLOAT NOT NULL
+);
+
+CREATE TABLE seat (
+                      seat_number VARCHAR(5) PRIMARY KEY NOT NULL,
+                      class_type VARCHAR(100) NOT NULL,
+                      CONSTRAINT fk_seat_class FOREIGN KEY (class_type) REFERENCES seat_class(class_type) ON DELETE CASCADE
+);
+
+CREATE TABLE passenger (
+                           passengerid VARCHAR(5) PRIMARY KEY NOT NULL,
+                           first_name VARCHAR(50) NOT NULL,
+                           last_name VARCHAR(50) NOT NULL,
+                           age INT CHECK (Age >= 0 AND Age <= 120) NOT NULL,
+                           date_of_birth DATE NOT NULL,
+                           nationality VARCHAR(50) NOT NULL,
+                           passport_number CHAR(9) UNIQUE,
+                           email VARCHAR(100) NOT NULL,
+                           phone_number VARCHAR(10) NOT NULL,
+                           address VARCHAR(200) NOT NULL
+);
+
+CREATE TABLE employee (
+                          employeeid VARCHAR(5) PRIMARY KEY NOT NULL,
+                          first_name VARCHAR(50) not null,
+                          last_name VARCHAR(50) not null,
+                          gender VARCHAR(1) Not null check (gender in ('M', 'F')),
+                          date_of_birth DATE not null,
+                          age INT not null check (age >= 18 and age <= 100),
+                          role VARCHAR(50) not null,
+                          salary DECIMAL(18, 2) not null,
+                          address VARCHAR(200) not null,
+                          phone_number VARCHAR(10) not null
+);
+
+CREATE TABLE booking (
+                         bookingid VARCHAR(5) PRIMARY KEY NOT NULL,
+                         booking_date DATETIME NOT NULL,
+                         payment_status VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE airport_staff (
+                               airport_staff_id VARCHAR(5) PRIMARY KEY NOT NULL,
+                               airportid VARCHAR(5) NOT NULL,
+                               employeeid VARCHAR(5) NOT NULL,
+                               status VARCHAR(50) NOT NULL,
+                               role VARCHAR(50) NOT NULL,
+                               CONSTRAINT fk_airport FOREIGN KEY (airportid) REFERENCES airport(airportid) ON DELETE CASCADE,
+                               CONSTRAINT fk_employee FOREIGN KEY (employeeid) REFERENCES employee(employeeid) ON DELETE CASCADE
+);
+
+CREATE TABLE flight_status (
+                               statusid VARCHAR(5) PRIMARY KEY NOT NULL,
+                               status VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE flight_schedule (
+                                 scheduleid VARCHAR(5) PRIMARY KEY NOT NULL,
+                                 statusid VARCHAR(5) NOT NULL,
+                                 departure_date DATETIME NOT NULL,
+                                 arrival_date DATETIME NOT NULL,
+                                 departure VARCHAR(50) NOT NULL,
+                                 arrival VARCHAR(50) NOT NULL,
+                                 flight_duration FLOAT NOT NULL,
+                                 CONSTRAINT fk_status FOREIGN KEY (statusid) REFERENCES flight_status(statusid) ON DELETE CASCADE
+);
+
+CREATE TABLE flight_base (
+                             flightid VARCHAR(5) PRIMARY KEY NOT NULL,
+                             airportid VARCHAR(5) NOT NULL,
+                             airlineid VARCHAR(5) NOT NULL,
+                             scheduleid VARCHAR(5) NOT NULL ,
+                             gate_number INT NOT NULL,
+                             CONSTRAINT fk_airport_flight_base FOREIGN KEY (airportid) REFERENCES airport(airportid) ON DELETE CASCADE,
+                             CONSTRAINT fk_airline FOREIGN KEY (airlineid) REFERENCES airline(airlineid) ON DELETE CASCADE,
+                             CONSTRAINT fk_schedule FOREIGN KEY (scheduleid) REFERENCES flight_schedule(scheduleid) ON DELETE CASCADE
+);
+
+CREATE TABLE ticket (
+                        ticketid VARCHAR(5) PRIMARY KEY NOT NULL,
+                        passengerid VARCHAR(5) NOT NULL,
+                        seat_number VARCHAR(5) NOT NULL,
+                        bookingid VARCHAR(5) NOT NULL,
+                        flightid VARCHAR(5) NOT NULL,
+                        final_price FLOAT CHECK (Final_price >= 0) NOT NULL,
+                        baggage_weight FLOAT CHECK (Baggage_weight >= 0) NOT NULL,
+                        CONSTRAINT fk_passenger FOREIGN KEY (passengerid) REFERENCES passenger(passengerid) ON DELETE CASCADE,
+                        CONSTRAINT fk_seat FOREIGN KEY (seat_number) REFERENCES seat(seat_number) ON DELETE CASCADE,
+                        CONSTRAINT fk_booking FOREIGN KEY (bookingid) REFERENCES booking(bookingid) ON DELETE CASCADE,
+                        CONSTRAINT fk_flight_ticket FOREIGN KEY (flightid) REFERENCES flight_base(flightid) ON DELETE CASCADE
+);
+
+CREATE TABLE flight_crew (
+                             flight_crew_id VARCHAR(5) PRIMARY KEY NOT NULL,
+                             employeeid VARCHAR(5) NOT NULL,
+                             flightid VARCHAR(5) NOT NULL,
+                             role VARCHAR(50) NOT NULL,
+                             status VARCHAR(50) NOT NULL,
+                             CONSTRAINT fk_employee_crew FOREIGN KEY (employeeid) REFERENCES employee(employeeid) ON DELETE CASCADE,
+                             CONSTRAINT fk_flight FOREIGN KEY (flightid) REFERENCES flight_base(flightid) ON DELETE CASCADE
+);
