@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as d3 from 'd3';
-import { HeatMapData, HeatMapProps } from '../types/types';
+import { HeatMapData, HeatMapProps } from '@/app/types/types';
 
 export default function HeatMap({
   width = '50rem', 
@@ -8,7 +8,8 @@ export default function HeatMap({
   margin_top = 20,
   margin_right = 20,
   margin_bottom = 30,
-  margin_left = 62
+  margin_left = 75
+
 }: HeatMapProps) {
   const heatmap_ref = useRef<SVGSVGElement | null>(null);
   const [data, set_data] = useState<HeatMapData[]>([]);
@@ -218,93 +219,80 @@ export default function HeatMap({
       tooltip.transition().duration(200).style('opacity', 0);
     };
 
-    function wrap_text(
-      text: d3.Selection<SVGTextElement, unknown, null, undefined>, 
-      width: number
-    ): void {
-      text.each(function () {
-        const textElement = d3.select(this as SVGTextElement);
-        const original_text = textElement.text();
-    
-        // Special handling for "-Total Network Manager Area"
-        if (original_text.includes("-Total Network Manager Area")) {
-          textElement.text(null)
-            .append("tspan")
-            .attr("x", 0)
-            .attr("y", textElement.attr("y"))
-            .attr("dy", "0em")
-            .text("-Total")
-            .append("tspan")
-            .attr("x", 0)
-            .attr("y", textElement.attr("y"))
-            .attr("dy", "1.1em")
-            .text("Network")
-            .append("tspan")
-            .attr("x", 0)
-            .attr("y", textElement.attr("y"))
-            .attr("dy", "2.2em")
-            .text("Manager Area");
-          return;
-        }
-    
-        // General text wrapping logic
-        const words = original_text.split(/[-\s]+/).reverse(); // Split on whitespace or hyphens
+    const wrap_text = (selection: d3.Selection<SVGTextElement, string, SVGGElement, unknown>, width: number) => {
+      selection.each(function () {
+        const text = d3.select(this);
+        const words = text.text().split(/\s+/).reverse();
         let word: string | undefined;
         let line: string[] = [];
+        let lineNumber = 0;
         const lineHeight = 1.1; // ems
-        const y = textElement.attr("y");
-        const dy = parseFloat(textElement.attr("dy") || "0");
-        let tspan = textElement.text(null)
-          .append("tspan")
-          .attr("x", 0)
-          .attr("y", y)
-          .attr("dy", `${dy}em`);
+        const x = text.attr('x');
+        const y = text.attr('y');
+        const dy = parseFloat(text.attr('dy') || '0');
+    
+        let tspan = text
+          .text(null)
+          .append('tspan')
+          .attr('x', x)
+          .attr('y', y)
+          .attr('dy', `${dy}em`);
     
         while ((word = words.pop())) {
           line.push(word);
-          tspan.text(line.join(" "));
-    
-          if (tspan.node() && tspan.node()!.getComputedTextLength() > width) {
+          tspan.text(line.join(' '));
+          if ((tspan.node() as SVGTextElement).getComputedTextLength() > width) {
             line.pop();
-            tspan.text(line.join(" "));
+            tspan.text(line.join(' '));
             line = [word];
-            tspan = textElement.append("tspan")
-              .attr("x", 0)
-              .attr("y", y)
-              .attr("dy", `${lineHeight}em`)
+            tspan = text
+              .append('tspan')
+              .attr('x', x)
+              .attr('y', y)
+              .attr('dy', `${++lineNumber * lineHeight + dy}em`)
+
               .text(word);
           }
         }
       });
-    }
+    };
     
+    const draw_entity_labels = (svg: d3.Selection<SVGSVGElement, any, any, any>, y: d3.ScaleBand<string>) => {
+      const labelGroup = svg.append('g')
+      .selectAll('text')
+      .data(entities)
+      .join('text')
+      .attr('x', margin_left - 2)
+      .attr('y', d => y(d)! + y.bandwidth() / 2)
+      .attr('dy', '0.35em')
+      .style('text-anchor', 'end')
+      .style('font-size', '12px')
+      .style('font-weight','bold')
+      .style('fill', 'black')
+      .text(d => d);
     
-    // X Axis
-    svg.append('g')
-      .attr('transform', `translate(0,${svg_height - margin_bottom})`)
-      .call(d3.axisBottom(x))
-      .selectAll("text")
-      .attr("transform", "rotate(-45)")
-      .style("text-anchor", "end")
-      .style("fill", "black")
-      .style("font-size", "13"); // Set text color to black
+    // Apply wrapping with the specified width
+    wrap_text(labelGroup as d3.Selection<SVGTextElement, string, SVGGElement, unknown>, 60);   
+    };
     
-    // Y Axis 
-    svg.append('g')
-      .attr('transform', `translate(${margin_left},0)`)
-      .call(d3.axisLeft(y).tickSize(0))
-      .selectAll<SVGTextElement, unknown>("text")
-      .style("fill", "black")
-      .style("text-anchor", "end")
-      .style("font-size", "10")
-      .each(function () {
-        const text = d3.select<SVGTextElement, unknown>(this); // Explicitly type individual selections
-        wrap_text(text, margin_left - 10);
-      });
+    ///Showing the states name on the left side
+    draw_entity_labels(svg, y);
 
-    // Axis lines
-    svg.selectAll(".domain, .tick line")
-      .style("stroke", "black"); // Set axis lines to black
+    // Add week labels at the bottom of the heatmap
+  const weeksGroup = svg.append('g')
+  .attr('transform', `translate(0, ${height + margin_bottom})`);
+
+      weeksGroup.selectAll('text')
+                .data(weeks)
+                .join('text')
+                .attr('x', d => x(String(d))! + x.bandwidth() / 2)
+                .attr('y', 15) // Adjust based on spacing needs
+                .attr('text-anchor', 'middle')
+                .style('font-size', '12px')
+                .style('font-weight','bold')
+                .style('fill', 'black')
+                .text(d => `Week ${d}`);
+
 
     // Heatmap cells with rounded corners and dynamic stroke on hover
     svg.selectAll()
