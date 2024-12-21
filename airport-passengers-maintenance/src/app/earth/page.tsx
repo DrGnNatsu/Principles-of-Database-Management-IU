@@ -14,7 +14,7 @@ export default function Earth() {
     const [isRotating, setIsRotating] = useState(false);
     const zoom = d3.zoom().scaleExtent([1, 8]).on("zoom", zoomed);
     const svgRef = useRef<SVGSVGElement | null>(null);
-    const width = 700;
+    const width = 800;
     const height = 600;
 
     // ------------------------------Functions to handle the logic-----------------------------
@@ -70,7 +70,7 @@ export default function Earth() {
         const maxFlights = d3.max(safeDataset, (d) => d.flights) || 0;
         return d3.scaleQuantile<number, string>()
             .domain([0, maxFlights])
-            .range(["#ffcc99", "#ffb366", "#ff8c1a", "#ff6600", "#cc5200", "#b34700"]);
+            .range(["#ffe0cc", "#ffd1b3", "#ffb380", "#ffa366", "#ff944d", "#ff8533", "#ff751a", "#ff6600", "#e65c00", "#cc5200", "#b34700", "#993d00", "#803300", "#990000"]);
     }
 
     const createEarth = async (dataset: { entity: string; flights: number }[]) => {
@@ -78,6 +78,8 @@ export default function Earth() {
         
         // Remove existing tooltip if any
         d3.select("#tooltip").remove();
+        // Remove existing legend if any
+        d3.select(".legend").remove();
 
         // Create a tooltip
         const tooltip = d3.select(".earth")
@@ -209,6 +211,59 @@ export default function Earth() {
                 previousMousePosition = null;
             })
         );
+
+        // Add legend
+        const legendWidth = 120;
+        const legendHeight = 150;
+        const colors = ["#ffe0cc", "#ffd1b3", "#ffb380", "#ffa366", "#ff944d", "#ff8533", "#ff751a", "#ff6600", "#e65c00", "#cc5200", "#b34700", "#993d00", "#803300", "#990000"];
+        
+        const legend = svg.append("g")
+            .attr("class", "legend")
+            .attr("transform", `translate(${width - legendWidth - 20}, 20)`); 
+
+        // Add white background for legend
+        legend.append("rect")
+            .attr("width", legendWidth)
+            .attr("height", legendHeight)
+            .attr("fill", "rgba(255, 255, 255, 0)")
+            .attr("opacity", 0.8)
+            .attr("rx", 5);
+
+        // Create legend items
+        const legendItems = legend.selectAll(".legend-item")
+            .data(colors)
+            .enter()
+            .append("g")
+            .attr("class", "legend-item")
+            .attr("transform", (d, i) => `translate(10, ${30 + i * 20})`);
+
+        // Add colored rectangles
+        legendItems.append("rect")
+            .attr("width", 15)
+            .attr("height", 15)
+            .attr("fill", d => d);
+
+        // Add text labels
+        const maxFlights = d3.max(dataFlights, d => d[1]) || 0;
+        console.log(maxFlights)
+        const step = maxFlights / (colors.length - 1);
+        
+        legendItems.append("text")
+            .attr("x", 25)
+            .attr("y", 12)
+            .style("font-size", "12px")
+            .text((d, i) => {
+                const value = Math.round(i * step);
+                return `${value.toLocaleString()} flights`;
+            });
+
+        // Add legend title
+        legend.append("text")
+            .attr("x", 10)
+            .attr("y", 15)
+            .style("font-weight", "bold")
+            .style("font-size", "12px")
+            .text("Flights Count");
     };
 
     const handleRotate = (direction: string) => {
@@ -307,7 +362,7 @@ export default function Earth() {
     const drawEarth = async () => {
         try {
             // const data = await d3.csv(`/dataset/csv${selectedYear}.csv`, rowConverter);
-            const data = await d3.csv(`/dataset/testing.csv`, rowConverter);
+            const data = await d3.csv(`/dataset/${selectedYear}.csv`, rowConverter);
             await createEarth(data);
         } catch (error) {
             console.error("Error loading CSV:", error);
