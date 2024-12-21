@@ -77,6 +77,7 @@ interface SeasonRange {
 }
 
 const seasonDateRanges: Record<string, SeasonRange> = {
+  'All': { start: { month: 1, day: 1 }, end: { month: 12, day: 31 } },
   'Spring': { start: { month: 1, day: 1 }, end: { month: 3, day: 31 } },
   'Summer': { start: { month: 4, day: 1 }, end: { month: 6, day: 30 } },
   'Fall': { start: { month: 7, day: 1 }, end: { month: 9, day: 30 } },
@@ -105,8 +106,8 @@ const getSeasonFromDate = (date: Date): string => {
 const FlightInYear: React.FC = () => {
   const [dataset, setDataset] = useState<DataPoint[]>([]);
   const [year, setYear] = useState("2020");
-  const [selectedState, setSelectedState] = useState("Albania");
-  const [season, setSeason] = useState("Spring");
+  const [selectedState, setSelectedState] = useState("Total Network Manager Area");
+  const [season, setSeason] = useState("All");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -131,9 +132,9 @@ const FlightInYear: React.FC = () => {
     const containerWidth = container.getBoundingClientRect().width;
 
     // Chart setup with responsive width
-    const margin = { top: 60, right: 30, bottom: 80, left: 60 };
+    const margin = { top: 60, right: 30, bottom: 70, left: 100 };
     const width = containerWidth - margin.left - margin.right;
-    const height = 400 - margin.top - margin.bottom;
+    const height = 600 - margin.top - margin.bottom;
 
     // Clear previous chart
     d3.select("#line-chart").selectAll("*").remove();
@@ -156,7 +157,8 @@ const FlightInYear: React.FC = () => {
     const filteredData = dataset.filter(d => {
       const parsedDate = parseDate(d.Day);
       if (!parsedDate) return false;
-      return d.Entity === selectedState && getSeasonFromDate(parsedDate) === season;
+      return d.Entity === selectedState && 
+        (season === 'All' || getSeasonFromDate(parsedDate) === season);
     });
 
     const data: ChartDataPoint[] = filteredData
@@ -179,25 +181,42 @@ const FlightInYear: React.FC = () => {
 
     const y = d3.scaleLinear()
       .domain([0, d3.max(data, d => d.Flights) || 0])
-      .range([height, 0]);
+      .range([height, 0])
+      .nice(); 
 
-    // Add X axis with larger text
+    // X axis
     svg.append("g")
       .attr("class", "x-axis")
       .attr("transform", `translate(0,${height})`)
       .attr("color", "black")
       .call(d3.axisBottom(x)
-        .ticks(d3.timeDay.every(7)) // Show weekly ticks
-        .tickFormat((d) => d3.timeFormat("%d/%m/%Y")(d as Date)))
+        .ticks(d3.timeDay.every(7) as d3.TimeInterval)
+        .tickFormat((d: Date | d3.NumberValue) => {
+          if (!(d instanceof Date)) return "";
+          
+          if (season === 'All') {
+            const currentTicks = x.ticks(d3.timeDay.every(7) as d3.TimeInterval);
+            const currentIndex = currentTicks.findIndex(tick => tick.getTime() === d.getTime());
+            const prevTick = currentIndex > 0 ? currentTicks[currentIndex - 1] : null;
+    
+            if (prevTick) {
+              const dayDiff = (d.getTime() - prevTick.getTime()) / (1000 * 60 * 60 * 24);
+              if (dayDiff < 4) return "";
+            }
+          }
+
+          return d3.timeFormat("%d/%m/%y")(d);
+        }))
       .selectAll("text")
         .style("text-anchor", "end")
         .attr("dx", "-.8em")
         .attr("dy", ".15em")
         .attr("transform", "rotate(-45)")
         .attr("color", "black")
-        .style("font-size", "14px");
+        .style("font-size", "14px")
+        .style("font-weight", "bold");
 
-    // Add Y axis with black color and grid, without top border
+    // Y axis 
     svg.append("g")
       .attr("class", "y-axis")
       .attr("color", "black")
@@ -205,19 +224,18 @@ const FlightInYear: React.FC = () => {
         .ticks(10)
         .tickSize(-width))
       .call(g => {
-        // Remove domain path (removes the axis line)
         g.select(".domain").remove();
-        // Style grid lines
         g.selectAll(".tick line")
           .attr("stroke", "#e0e0e0")
           .attr("stroke-dasharray", "2,2");
-        // Style tick text
         g.selectAll(".tick text")
           .attr("color", "black")
-          .style("font-size", "14px");
+          .style("font-size", "14px")
+          .style("font-weight", "bold")
+          .attr("dx", "-1em"); 
       });
 
-    // Add line path
+    // Line path
     const line = d3.line<ChartDataPoint>()
       .x(d => x(d.Date))
       .y(d => y(d.Flights))
@@ -279,17 +297,6 @@ const FlightInYear: React.FC = () => {
           .attr("r", 4)
           .style("fill", "steelblue");
       });
-
-    // Add X axis label with adjusted position
-    svg.append("text")
-      .attr("class", "x-label")
-      .attr("text-anchor", "middle")
-      .attr("x", width/2)
-      .attr("y", height + margin.bottom - 10) // Adjusted position
-      .text("Date")
-      .style("font-size", "16px")
-      .style("fill", "black")
-      .style("font-weight", "bold");
 
     // Add Y axis label
     svg.append("text")
@@ -354,8 +361,9 @@ const FlightInYear: React.FC = () => {
             id="season-selection"
             value={season}
             onChange={(e) => setSeason(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 text-black"
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
           >
+            <option value="All">All Seasons</option>
             <option value="Spring">Spring</option>
             <option value="Summer">Summer</option>
             <option value="Fall">Fall</option>
@@ -364,10 +372,13 @@ const FlightInYear: React.FC = () => {
         </div>
       </div>
 
+      
       <div 
         id="line-chart" 
-        className="w-full h-[500px] bg-white rounded-lg overflow-hidden"
+        className="w-full h-[600px] bg-white rounded-lg overflow-hidden"
       ></div>
+      
+      {/* Tooltip */}
       <div
         id="tooltip"
         style={{
