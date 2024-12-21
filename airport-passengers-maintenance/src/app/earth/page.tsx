@@ -76,10 +76,26 @@ export default function Earth() {
     const createEarth = async (dataset: { entity: string; flights: number }[]) => {
         const svg = initializeSVG();
         
-        projection.rotate(rotation);
-        
-        const colorScale = generateColorScale(dataset);
+        // Remove existing tooltip if any
+        d3.select("#tooltip").remove();
 
+        // Create a tooltip
+        const tooltip = d3.select(".earth")
+                            .append("div")
+                            .attr("id", "tooltip")
+                            .style("position", "absolute") // Changed from absolute to fixed
+                            .style("background-color", "white")
+                            .style("border", "1px solid #333")
+                            .style("border-radius", "5px")
+                            .style("padding", "8px")
+                            .style("font-size", "12px")
+                            .style("opacity", "0")
+                            .style("pointer-events", "none")
+                            .style("z-index", "1000")
+                            .style("color", "black");
+
+        projection.rotate(rotation);
+        const colorScale = generateColorScale(dataset);
         const world = await loadWorld();
         console.log(world.features.map((d: { properties: { name: any } }) => d.properties.name));
         
@@ -131,8 +147,32 @@ export default function Earth() {
                 .attr("d", path)
                 .attr("fill", d => (d.flights ? colorScale(d.flights) : "#ffe0cc"))
                 .attr("stroke", "#000")
-                .on("click", clicked);
-
+                .on("click", clicked)
+                .on("mouseover", (event, d) => {
+                    // Ensure the tooltip is shown only for valid data
+                    // console.log("ok");
+                    tooltip
+                        .style("opacity", "1")
+                        .html(`
+                            <div><strong>${d.properties.name}</strong></div>
+                            <div>Flights: ${d.flights}</div>
+                        `)
+                        .style("left", `${event.pageX + 10}px`)
+                        .style("top", `${event.pageY + 10}px`);
+                })
+                .on("mousemove", (event) => {
+                    // console.log("ok");
+                    // Update the tooltip position dynamically
+                    tooltip
+                        .style("left", `${event.pageX + 10}px`)
+                        .style("top", `${event.pageY + 10}px`);
+                })
+                .on("mouseout", () => {
+                    // Hide the tooltip when the mouse leaves the area
+                    tooltip.style("opacity", "0");
+                });
+        
+        // console.log(countries);
         // Remove old countries
         countries.exit().remove();
 
@@ -198,7 +238,7 @@ export default function Earth() {
         const startTime = Date.now();
 
         const svg = d3.select(".earth").select("svg");
-
+        
         const animate = () => {
             const elapsed = Date.now() - startTime;
             const rawProgress = Math.min(elapsed / duration, 1);
@@ -231,7 +271,10 @@ export default function Earth() {
         );
 
         // Reset the color of the countries
-        svg.selectAll(".country").transition().style("fill", d => (d.flights ? generateColorScale(d.flights) : "#ffe0cc"));
+        // svg.selectAll(".country").transition().style("fill", d => (d.flights ? generateColorScale(d.flights) : "#ffe0cc"));
+        svg.selectAll(".country").transition().style("fill", d => {
+            d.flights ? generateColorScale(d.flights) : "#ffe0cc"
+        });
     }
     
     function clicked(event, d) {
@@ -263,7 +306,8 @@ export default function Earth() {
     // Load data and draw the earth
     const drawEarth = async () => {
         try {
-            const data = await d3.csv(`/dataset/csv${selectedYear}.csv`, rowConverter);
+            // const data = await d3.csv(`/dataset/csv${selectedYear}.csv`, rowConverter);
+            const data = await d3.csv(`/dataset/testing.csv`, rowConverter);
             await createEarth(data);
         } catch (error) {
             console.error("Error loading CSV:", error);
