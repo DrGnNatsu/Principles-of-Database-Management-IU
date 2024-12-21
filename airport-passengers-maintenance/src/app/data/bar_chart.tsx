@@ -69,7 +69,7 @@ import './bar_chart.css'
 
             console.log("Sorted and sliced data for rendering:", sortedData);
 
-            const margin = {top: 40, right: 20, bottom: 80, left: 60};
+            const margin = {top: 40, right: 20, bottom: 80, left: 70};
             const width = 1000 -margin.left-margin.right;
             const height = 500 -margin.top-margin.bottom;
 
@@ -151,6 +151,7 @@ import './bar_chart.css'
                 .call(d3.axisBottom(x))
                 .selectAll("text")
                 .attr("transform", "rotate(-45)")
+                .style('font-size', '12px')
                 .attr("color", "black")
                 .style('font-weight','bold')
                 .style("text-anchor", "end");
@@ -159,6 +160,7 @@ import './bar_chart.css'
                 .append("g")
                 .attr("class", "y-axis")
                 .style('font-weight','bold')
+                .style('font-size', '12px')
                 .attr("color", "black")
                 .call(d3.axisLeft(y).ticks(10));
 
