@@ -226,7 +226,7 @@ export default function Earth() {
             .attr("width", legendWidth)
             .attr("height", legendHeight)
             .attr("fill", "rgba(255, 255, 255, 0)")
-            .attr("opacity", 0.8)
+            .attr("opacity", 1)
             .attr("rx", 5);
 
         // Create legend items
@@ -263,7 +263,7 @@ export default function Earth() {
             .attr("y", 15)
             .style("font-weight", "bold")
             .style("font-size", "12px")
-            .text("Flights Count");
+            .text("Flights Count")
     };
 
     const handleRotate = (direction: string) => {
@@ -319,7 +319,7 @@ export default function Earth() {
     // ------------------------------Zooming feature------------------------------
     const reset = (svg) => { 
         svg.selectAll("path").attr("d", path); // Update paths to reflect rotation reset
-        
+
         svg.transition().duration(500).call(
             zoom.transform, 
             d3.zoomIdentity // Reset zoom transform
@@ -330,6 +330,7 @@ export default function Earth() {
         svg.selectAll(".country").transition().style("fill", d => {
             d.flights ? generateColorScale(d.flights) : "#ffe0cc"
         });
+
     }
     
     function clicked(event, d) {
@@ -353,8 +354,19 @@ export default function Earth() {
     function zoomed(event) {
         const {transform} = event;
         const svg = d3.select(".earth").select("svg");
+        const legend = d3.select(".legend");
+        
         svg.selectAll("path").attr("transform", transform);
         svg.selectAll("path").attr("stroke-width", 1 / transform.k);
+        
+        // Show legend only when zoom scale is 1 or smaller
+        if (transform.k <= 1) {
+            legend.style("display", "block")
+                  .style("opacity", 1);
+        } else {
+            legend.style("display", "none")
+                  .style("opacity", 0);
+        }
     }
 
     // ---------------------------------------------------------------------------
