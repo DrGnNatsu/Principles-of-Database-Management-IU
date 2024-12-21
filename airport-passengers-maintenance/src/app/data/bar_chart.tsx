@@ -28,7 +28,7 @@ import './bar_chart.css'
                     Flights: +d.Flights,
                 }));
 
-                const filteredData = rawData.filter((d) => d.Entity && d.Entity !== "-Total Network Manager Area" && !isNaN(d.Flights));
+                const filteredData = rawData.filter((d) => d.Entity && d.Entity !== "Total Network Manager Area" && !isNaN(d.Flights));
 
                 const aggreatedData = d3.rollups(
                     filteredData,
@@ -69,9 +69,9 @@ import './bar_chart.css'
 
             console.log("Sorted and sliced data for rendering:", sortedData);
 
-            const margin = {top: 40, right: 20, bottom: 50, left: 60};
+            const margin = {top: 40, right: 20, bottom: 80, left: 60};
             const width = 1000 -margin.left-margin.right;
-            const height = 400 -margin.top-margin.bottom;
+            const height = 500 -margin.top-margin.bottom;
 
             const svg = d3
                     .select("#bar-chart-min-max")
@@ -152,11 +152,13 @@ import './bar_chart.css'
                 .selectAll("text")
                 .attr("transform", "rotate(-45)")
                 .attr("color", "black")
+                .style('font-weight','bold')
                 .style("text-anchor", "end");
 
             svg
                 .append("g")
                 .attr("class", "y-axis")
+                .style('font-weight','bold')
                 .attr("color", "black")
                 .call(d3.axisLeft(y).ticks(10));
 
