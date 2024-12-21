@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as d3 from 'd3';
-import { HeatMapData, HeatMapProps } from '../types/types';
+import { HeatMapData, HeatMapProps } from '@/app/types/types';
 
 export default function HeatMap({
   width = '50rem', 
