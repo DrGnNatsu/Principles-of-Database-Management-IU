@@ -6,8 +6,7 @@ INSERT INTO flight_status (statusid, status) VALUES
 INSERT INTO flight_schedule (scheduleid, statusid, departure_date, arrival_date, departure, arrival, flight_duration) VALUES
                                                                                                          ('FS001', 'ST001', '2024-12-01 10:00:00', '2024-12-01 12:00:00', 'Cam Ranh', 'Ho Chi Minh', 2),
                                                                                                          ('FS002', 'ST002', '2024-12-02 14:00:00', '2024-12-02 17:00:00', 'Cam Ranh', 'Ha Noi', 3),
-                                                                                                         ('FS003', 'ST003', '2024-12-03 08:00:00', '2024-12-03 09:30:00', 'Cam Ranh', 'Da Nang', 1.5),
-                                                                                                         ('FS004', 'ST003', '2024-12-03 08:00:00', '2024-12-04 09:30:00', 'Cam Ranh', 'Da Nang', 1.5);
+                                                                                                         ('FS003', 'ST003', '2024-12-03 08:00:00', '2024-12-03 09:30:00', 'Cam Ranh', 'Da Nang', 1.5);
 
 INSERT INTO airline (airlineid, airline_name) VALUES
 ('AL001', 'Vietnam Airlines'),
