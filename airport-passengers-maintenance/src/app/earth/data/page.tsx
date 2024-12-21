@@ -10,7 +10,7 @@ export default function Data() {
       
       <h1 className="text-3xl font-bold mb-8">European Aviation Traffic</h1>
 
-      <div className="w-full max-w-7xl bg-neutral-50 rounded-lg shadow-lg p-8 mt-8">
+      <div className="w-full max-w-full bg-neutral-50 rounded-lg shadow-lg p-8 mt-8">
         <FlightInYear/>
       </div>
 
