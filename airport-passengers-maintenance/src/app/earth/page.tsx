@@ -63,14 +63,21 @@ export default function Earth() {
         return d3.select(".earth").select("svg");
     };
 
+    const generateColorScale = (dataset: { entity: string; flights: number }[]) => {
+        // If the dataset is not an array, return an empty array
+        const safeDataset = Array.isArray(dataset) ? dataset : [];
+        const maxFlights = d3.max(safeDataset, (d) => d.flights) || 0;
+        return d3.scaleQuantile<number, string>()
+            .domain([0, maxFlights])
+            .range(["#ffcc99", "#ffb366", "#ff8c1a", "#ff6600", "#cc5200", "#b34700"]);
+    }
+
     const createEarth = async (dataset: { entity: string; flights: number }[]) => {
         const svg = initializeSVG();
         
         projection.rotate(rotation);
         
-        const colorScale = d3.scaleQuantile<number, string>()
-            .domain([0, d3.max(dataset, d => d.flights) || 0])
-            .range(["#ffcc99", "#ffb366", "#ff8c1a", "#ff6600", "#cc5200", "#b34700"]);
+        const colorScale = generateColorScale(dataset);
 
         const world = await loadWorld();
         console.log(world.features.map((d: { properties: { name: any } }) => d.properties.name));
@@ -124,8 +131,6 @@ export default function Earth() {
                 .attr("fill", d => (d.flights ? colorScale(d.flights) : "#ffe0cc"))
                 .attr("stroke", "#000")
                 .on("click", clicked);
-        
-        svg.call(zoom).onclick = () => reset(svg);
 
         // Remove old countries
         countries.exit().remove();
@@ -214,12 +219,17 @@ export default function Earth() {
 
     // ------------------------------Zooming feature------------------------------
     const reset = (svg) => { 
-        svg.selectAll(".country").transition().style("fill", null);
-        svg.transition().duration(750).call(
-            zoom.transform,
-            d3.zoomIdentity,
-            d3.zoomTransform(svg.node()).invert([width / 2, height / 2])
+        const resetRotation = [0, 0, 0]; // Default rotation
+        projection.rotate(resetRotation); // Reset the rotation
+        svg.selectAll("path").attr("d", path); // Update paths to reflect rotation reset
+        
+        svg.transition().duration(500).call(
+            zoom.transform, 
+            d3.zoomIdentity // Reset zoom transform
         );
+
+        // Reset the color of the countries
+        svg.selectAll(".country").transition().style("fill", d => (d.flights ? generateColorScale(d.flights) : "#ffe0cc"));
     }
     
     function clicked(event, d) {
@@ -228,7 +238,7 @@ export default function Earth() {
         event.stopPropagation();
         
         svg.selectAll(".country").transition().style("fill", null);
-        d3.select(this).transition().style("fill", "red");
+        d3.select(this).transition().style("fill", "#91ff00");
         
         svg.transition().duration(750).call(
             zoom.transform,
@@ -324,6 +334,10 @@ export default function Earth() {
                     transform transition duration-200"
                 >Rotate Right</Button>
                 <Button id="zoom-in"
+                    onClick={() => d3.select(".earth").select("svg")
+                        .transition()
+                        .duration(500)
+                        .call(zoom.scaleBy, 2.0)}
                     className="px-8 py-2 text-md font-medium
                     text-white bg-black rounded-md
                     hover:bg-zinc-500 hover:scale-110
@@ -331,6 +345,11 @@ export default function Earth() {
                     transform transition duration-200"
                 >Zoom In</Button>
                 <Button id="zoom-out"
+                    onClick={() => d3.select(".earth").select("svg")
+                        .transition()
+                        .duration(500)
+                        .call(zoom.scaleBy, 0.5)
+                    }   
                     className="px-8 py-2 text-md font-medium
                     text-white bg-black rounded-md
                     hover:bg-zinc-500 hover:scale-110
@@ -338,13 +357,19 @@ export default function Earth() {
                     transform transition duration-200"
                 >Zoom Out</Button>
                 <Button id="reset"
-                    // onClick={reset(svgRef.current)}
+                    onClick={() => {
+                        const svg = d3.select(".earth").select("svg");
+                        reset(svg);
+                    }}
                     className="px-8 py-2 text-md font-medium
                     text-white bg-black rounded-md
                     hover:bg-zinc-500 hover:scale-110
                     active:bg-zinc-300 active:translate-y-1
                     transform transition duration-200"
-                >Reset</Button>
+                >
+                    Reset
+                </Button>
+
             </div>
         </div>
 );}
