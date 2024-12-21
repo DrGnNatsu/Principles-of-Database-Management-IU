@@ -9,6 +9,7 @@ export default function HeatMap({
   margin_right = 20,
   margin_bottom = 30,
   margin_left = 75
+
 }: HeatMapProps) {
   const heatmap_ref = useRef<SVGSVGElement | null>(null);
   const [data, set_data] = useState<HeatMapData[]>([]);
@@ -249,6 +250,7 @@ export default function HeatMap({
               .attr('x', x)
               .attr('y', y)
               .attr('dy', `${++lineNumber * lineHeight + dy}em`)
+
               .text(word);
           }
         }
@@ -290,6 +292,7 @@ export default function HeatMap({
                 .style('font-weight','bold')
                 .style('fill', 'black')
                 .text(d => `Week ${d}`);
+
 
     // Heatmap cells with rounded corners and dynamic stroke on hover
     svg.selectAll()
