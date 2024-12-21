@@ -11,6 +11,7 @@ export default function Earth() {
     const [selectedYear, setSelectedYear] = useState("2023");
     const [rotation, setRotation] = useState([0, 0, 0]);
     const [animationFrameId, setAnimationFrameId] = useState<number | null>(null);
+    const [isRotating, setIsRotating] = useState(false);
     const zoom = d3.zoom().scaleExtent([1, 8]).on("zoom", zoomed);
     const svgRef = useRef<SVGSVGElement | null>(null);
     const width = 700;
@@ -175,6 +176,8 @@ export default function Earth() {
             cancelAnimationFrame(animationFrameId);
         }
 
+        setIsRotating(true);
+
         const currentRotation = [...rotation];
         const targetRotation = [...rotation];
         
@@ -210,6 +213,7 @@ export default function Earth() {
                 setAnimationFrameId(frameId);
             } else {
                 setRotation(newRotation);
+                setIsRotating(false);
             }
         };
 
@@ -219,8 +223,6 @@ export default function Earth() {
 
     // ------------------------------Zooming feature------------------------------
     const reset = (svg) => { 
-        const resetRotation = [0, 0, 0]; // Default rotation
-        projection.rotate(resetRotation); // Reset the rotation
         svg.selectAll("path").attr("d", path); // Update paths to reflect rotation reset
         
         svg.transition().duration(500).call(
@@ -319,6 +321,7 @@ export default function Earth() {
             <div className="flex space-x-4 mb-20">
                 <Button id="rotate-left" 
                     onClick={() => handleRotate("left")}
+                    disabled={isRotating}
                     className="px-8 py-2 text-md font-medium
                     text-white bg-black rounded-md
                     hover:bg-zinc-500 hover:scale-110
@@ -327,6 +330,7 @@ export default function Earth() {
                 >Rotate Left</Button>
                 <Button id="rotate-right"  
                     onClick={() => handleRotate("right")}
+                    disabled={isRotating}
                     className="px-8 py-2 text-md font-medium
                     text-white bg-black rounded-md
                     hover:bg-zinc-500 hover:scale-110
