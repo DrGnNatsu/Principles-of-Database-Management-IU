@@ -1,26 +1,25 @@
-"use client";
-
-import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
-import * as d3 from "d3";
-import { useEffect, useState } from "react";
-import * as topojson from "topojson-client";
+"use client"
+import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
+import * as d3 from "d3"
+import * as topojson from "topojson-client"
+import { useEffect, useState, useMemo, useRef } from "react"
 
 export default function Earth() {
+    // ------------------------------Constants------------------------------
     const router = useRouter();
     const [selectedYear, setSelectedYear] = useState("2023");
-    const [scale, setScale] = useState(1);
-    const MIN_SCALE = 0.5;
-    const MAX_SCALE = 8;
-    const [targetScale, setTargetScale] = useState(1);
-    let animationFrameId: number | null = null;
+    const [rotation, setRotation] = useState([0, 0, 0]);
+    const [animationFrameId, setAnimationFrameId] = useState<number | null>(null);
+    const zoom = d3.zoom().scaleExtent([1, 8]).on("zoom", zoomed);
+    const svgRef = useRef<SVGSVGElement | null>(null);
+    const width = 700;
+    const height = 600;
 
-    let projection: d3.GeoStreamWrapper | null | undefined = null; // Declare projection globally
-    let render: ((country: any, arc: any) => HTMLCanvasElement) | ((arg0: null) => void) | null = null; // Declare render globally
-
+    // ------------------------------Functions to handle the logic-----------------------------
     const handleRedirect = () => {
         router.push("/earth/data");
-    };
+    };   
 
     const rowConverter = (d: { [x: string]: string; }) => ({
         entity: d["Entity"],
@@ -34,260 +33,251 @@ export default function Earth() {
         flights_previous_year: parseInt(d["Flights Previous Year"], 10) || 0,
     });
 
+    // ------------------------------Functions to create the world-----------------------------
     const loadWorld = async () => {
-        const data = await d3.json("/map/world.json"); // Ensure correct path
+        const data = await d3.json("/map/worldLow.geo.json");
         return data;
     };
 
-    const smoothZoom = (targetScale: number) => {
-        const startScale = scale;
-        const startTime = Date.now();
-        const ZOOM_TRANSITION_DURATION = 300;
+    const projection = useMemo(() => {
+        return d3.geoOrthographic()
+            .scale(250)
+            .translate([width / 2, height / 2]);
+    }, []);
 
-        const animate = () => {
-            const currentTime = Date.now();
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / ZOOM_TRANSITION_DURATION, 1);
-            const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
-            const currentScale = startScale + (targetScale - startScale) * easeProgress;
+    const path = useMemo(() => {
+        return d3.geoPath().projection(projection);
+    }, [projection]);
 
-            setScale(currentScale);
-            if (projection) projection.scale(currentScale * 250); // Use global projection
-            if (render) render(null); // Use global render function
+    const initializeSVG = () => {
+        if (!d3.select(".earth").select("svg").size()) {
+            return d3.select(".earth")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .style("border-radius", "20px")
+                .style("display", "block")
+                .style("margin", "auto")
+                .style("background-color", "rgba(255, 255, 255, 0.75)");
+        }
+        return d3.select(".earth").select("svg");
+    };
 
-            if (progress < 1) {
-                animationFrameId = requestAnimationFrame(animate);
+    const createEarth = async (dataset: { entity: string; flights: number }[]) => {
+        const svg = initializeSVG();
+        
+        projection.rotate(rotation);
+        
+        const colorScale = d3.scaleQuantile<number, string>()
+            .domain([0, d3.max(dataset, d => d.flights) || 0])
+            .range(["#ffcc99", "#ffb366", "#ff8c1a", "#ff6600", "#cc5200", "#b34700"]);
+
+        const world = await loadWorld();
+        console.log(world.features.map((d: { properties: { name: any } }) => d.properties.name));
+        
+        // -----------------------------Add flights data from the csv file to the map json-----------------------------
+        const dataFlights = d3.rollup(
+            dataset,
+            v => d3.sum(v, d => d.flights),
+            d => d.entity
+        );
+
+        dataFlights.forEach((value, key) => {
+            world.features.forEach((d: { properties: { name: any }; flights?: number }) => {
+                if (d.properties.name === key) {
+                    d.flights = value || 0;
+                }
+            });
+        });
+        
+        world.features.forEach((d: { flights?: number }) => {
+            if (d.flights === undefined) {
+                d.flights = 0;
             }
-        };
+        });
+        // -------------------------------------------------------------------------------------------------------------
 
+        // Print the data
+        console.log(world.features.map((d: { properties: { name: any }; flights: any }) => ({ name: d.properties.name, flights: d.flights })));
+
+        // Update or create sphere
+        let sphere = svg.select(".sphere");
+        if (sphere.empty()) {
+            sphere = svg.append("path")
+                .attr("class", "sphere")
+                .datum({ type: "Sphere" })
+                .attr("fill", "#2F4B7C")
+                .attr("stroke", "#000");
+        }
+        sphere.attr("d", path);
+
+        // Update or create countries
+        let countries = svg.selectAll(".country")
+            .data(world.features);
+
+        // Enter new countries
+        countries.enter()
+                .append("path")
+                .attr("class", "country")
+                .merge(countries as any)
+                .attr("d", path)
+                .attr("fill", d => (d.flights ? colorScale(d.flights) : "#ffe0cc"))
+                .attr("stroke", "#000")
+                .on("click", clicked);
+        
+        svg.call(zoom).onclick = () => reset(svg);
+
+        // Remove old countries
+        countries.exit().remove();
+
+        // -----------------------------Add rotate and drag functionalities-----------------------------
+        // Dragging feature
+        let isDragging = false;
+        let previousMousePosition: [number, number] | null = null;
+
+        // Handle drag events
+        svg.call(d3.drag()
+            .on("start", (event) => {
+            isDragging = true;
+            previousMousePosition = [event.x, event.y];
+            })
+            .on("drag", (event) => {
+                if (!isDragging || !previousMousePosition) return;
+
+                const [prevX, prevY] = previousMousePosition;
+                const deltaX = event.x - prevX;
+                const deltaY = event.y - prevY;
+
+                rotation[0] += deltaX * 0.5;
+                rotation[1] -= deltaY * 0.5;
+
+                projection.rotate(rotation);
+                svg.selectAll("path").attr("d", path);
+
+                setRotation([...rotation]); // Synchronize rotation state
+
+                previousMousePosition = [event.x, event.y];
+            })
+            .on("end", () => {
+                isDragging = false;
+                previousMousePosition = null;
+            })
+        );
+    };
+
+    const handleRotate = (direction: string) => {
         if (animationFrameId) {
             cancelAnimationFrame(animationFrameId);
         }
-        animationFrameId = requestAnimationFrame(animate);
-    };
 
-    const debounce = (func: { (event: any): void; (arg0: any): void; }, wait: number | undefined) => {
-        let timeout: string | number | NodeJS.Timeout | undefined;
-        return function executedFunction(...args: any[]) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    };
-
-    const createEarth = async (dataset: Iterable<unknown>) => {
-        d3.select(".earth canvas").remove();
-        console.log(dataset)
-        const world = await loadWorld();
-        const land = topojson.feature(world, world.objects.land);
-        const borders = topojson.mesh(world, world.objects.countries, (a, b) => a !== b);
+        const currentRotation = [...rotation];
+        const targetRotation = [...rotation];
         
-
-        console.log(world.objects.countries.geometries.map((d: { id: any; properties: { name: any; }; }) => d.properties.name))
-
-
-        const width = 900;
-        const height = 600;
-        const dpr = window.devicePixelRatio ?? 1;
-
-        const colorScale = d3.scaleLinear()
-                            .range(["#f7f7f7", "#ff4444"])
-                            .domain([0, d3.max(dataset, (d) => d.flights)])
-        
-
-        const canvas = d3.create("canvas")
-            .attr("width", width * dpr)
-            .attr("height", height * dpr)
-            .style("width", `${width}px`)
-            .style("height", `${height}px`)
-            .style("display", "block")
-            .style("border-radius", "20px")
-            .classed("m-auto block", true);
-
-        const context = canvas.node()?.getContext("2d");
-        if (!context) {
-            console.error("Failed to get 2D context");
-            return;
+        if (direction === "left") {
+            targetRotation[0] -= 90;
+        } else if (direction === "right") {
+            targetRotation[0] += 90;
         }
-        context.scale(dpr, dpr);
 
-        projection = d3.geoOrthographic() // Initialize projection here
-            .fitExtent([[0, 0], [width, height]], { type: "Sphere" })
-            .scale(scale * 250);
-
-        const path = d3.geoPath(projection, context);
-
-        render = (country: d3.GeoPermissibleObjects, arc: d3.GeoPermissibleObjects) => {
-            const color = d3.scaleQuantize()
-                    .range(["rgb(255,245,240)", "rgb(252,187,161)", "rgb(252,146,114)", "rgb(251,106,74)", "rgb(203,24,29)"])
-                    .domain([d3.min(dataset, d => d.flights), d3.max(dataset, d => d.flights)]);
-
-            context.clearRect(0, 0, width, height);
-            context.fillStyle = "rgba(255, 255, 255, 0.75)";
-            context.fillRect(0, 0, width, height);
-
-            context.beginPath();
-            path({ type: "Sphere" });
-            context.fillStyle = "#2F4B7C";
-            context.fill();
-
-            context.beginPath();
-            path(land);
-            context.fillStyle = "#A0A0A0";
-            context.fill();
-
-            if (country) {
-                context.beginPath();
-                path(country);
-                context.fillStyle = "#ff4444";
-                context.fill();
-            }
-
-            context.beginPath();
-            path(borders);
-            context.strokeStyle = "#fff";
-            context.lineWidth = 0.5;
-            context.stroke();
-
-            context.beginPath();
-            path({ type: "Sphere" });
-            context.strokeStyle = "#000";
-            context.lineWidth = 1.5;
-            context.stroke();
-
-            if (arc) {
-                context.beginPath();
-                path(arc);
-                context.strokeStyle = "#fff";
-                context.lineWidth = 1;
-                context.stroke();
-            }
-
-            return context.canvas;
+        const easeInOutCubic = (t: number) => {
+            return t < 0.5 
+                ? 4 * t * t * t 
+                : 1 - Math.pow(-2 * t + 2, 3) / 2;
         };
 
-        let currentCountry = null;
-        let isDragging = false;
-        let previousMousePosition: any[] | null = null;
+        const interpolator = d3.interpolate(currentRotation, targetRotation);
+        const duration = 500;
+        const startTime = Date.now();
 
-        const handleZoom = debounce((event: { preventDefault: () => void; deltaY: any; }) => {
-            event.preventDefault();
-            const delta = event.deltaY;
-            const zoomFactor = 0.1;
-            let newScale = scale;
+        const svg = d3.select(".earth").select("svg");
 
-            if (delta > 0) {
-                newScale = Math.max(MIN_SCALE, scale - zoomFactor);
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const rawProgress = Math.min(elapsed / duration, 1);
+            const progress = easeInOutCubic(rawProgress);
+
+            const newRotation = interpolator(progress);
+            projection.rotate(newRotation);
+            svg.selectAll("path").attr("d", path);
+
+            if (rawProgress < 1) {
+                const frameId = requestAnimationFrame(animate);
+                setAnimationFrameId(frameId);
             } else {
-                newScale = Math.min(MAX_SCALE, scale + zoomFactor);
+                setRotation(newRotation);
             }
-
-            smoothZoom(newScale);
-        }, 16);
-
-        const rotateGlobe = async (direction: string) => {
-            const rotation = projection.rotate();
-            const targetRotation = [...rotation];
-            if (direction === "left") {
-                targetRotation[0] -= 90;
-            } else if (direction === "right") {
-                targetRotation[0] += 90;
-            }
-
-            const interpolator = d3.interpolate(rotation, targetRotation);
-            let start: number | null = null;
-            const duration = 750;
-
-            const animate = (timestamp: number) => {
-                if (!start) start = timestamp;
-                const progress = (timestamp - start) / duration;
-                if (progress < 1) {
-                    projection.rotate(interpolator(progress));
-                    render(currentCountry);
-                    animationFrameId = requestAnimationFrame(animate);
-                } else {
-                    projection.rotate(targetRotation);
-                    render(currentCountry);
-                }
-            };
-
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-            }
-            animationFrameId = requestAnimationFrame(animate);
         };
 
-        const onDragStart = (event: { clientX: any; clientY: any; }) => {
-            isDragging = true;
-            previousMousePosition = [event.clientX, event.clientY];
-        };
-
-        const onDragMove = (event: { clientX: number; clientY: number; }) => {
-            if (!isDragging || !previousMousePosition) return;
-
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-            }
-
-            const [prevX, prevY] = previousMousePosition;
-            const deltaX = event.clientX - prevX;
-            const deltaY = event.clientY - prevY;
-            const rotation = projection.rotate();
-            rotation[0] += deltaX * 0.2;
-            rotation[1] -= deltaY * 0.2;
-
-            animationFrameId = requestAnimationFrame(() => {
-                projection.rotate(rotation);
-                render(currentCountry);
-            });
-
-            previousMousePosition = [event.clientX, event.clientY];
-        };
-
-        const container = d3.select(".earth");
-        container.html("");
-        const canvasNode = canvas.node();
-        container.node()?.appendChild(canvasNode);
-
-        canvasNode.addEventListener("mousedown", onDragStart);
-        canvasNode.addEventListener("mousemove", onDragMove);
-        canvasNode.addEventListener("mouseup", () => (isDragging = false));
-        canvasNode.addEventListener("mouseleave", () => (isDragging = false));
-        canvasNode.addEventListener("wheel", handleZoom);
-
-        render(null);
-
-        d3.select("#rotate-left").on("click", () => rotateGlobe("left"));
-        d3.select("#rotate-right").on("click", () => rotateGlobe("right"));
-        d3.select("#zoom-in").on("click", () => smoothZoom(Math.min(MAX_SCALE, scale + 0.5)));
-        d3.select("#zoom-out").on("click", () => smoothZoom(Math.max(MIN_SCALE, scale - 0.5)));
+        requestAnimationFrame(animate);
     };
+    // ---------------------------------------------------------------------------
 
-    const drawEarth = () => {
-        d3.csv(`/dataset/csv${selectedYear}.csv`, rowConverter)
-            .then((data) => {
-                createEarth(data);
-            })
-            .catch((error) => {
-                console.error("Error loading CSV:", error);
-            });
+    // ------------------------------Zooming feature------------------------------
+    const reset = (svg) => { 
+        svg.selectAll(".country").transition().style("fill", null);
+        svg.transition().duration(750).call(
+            zoom.transform,
+            d3.zoomIdentity,
+            d3.zoomTransform(svg.node()).invert([width / 2, height / 2])
+        );
+    }
+    
+    function clicked(event, d) {
+        const svg = d3.select(".earth").select("svg");
+        const [[x0, y0], [x1, y1]] = path.bounds(d);
+        event.stopPropagation();
+        
+        svg.selectAll(".country").transition().style("fill", null);
+        d3.select(this).transition().style("fill", "red");
+        
+        svg.transition().duration(750).call(
+            zoom.transform,
+            d3.zoomIdentity
+                .translate(width / 2, height / 2)
+                .scale(Math.min(8, 0.9 / Math.max((x1 - x0) / width, (y1 - y0) / height)))
+                .translate(-(x0 + x1) / 2, -(y0 + y1) / 2),
+            d3.pointer(event, svg.node())
+        );
+    }
+    
+    function zoomed(event) {
+        const {transform} = event;
+        const svg = d3.select(".earth").select("svg");
+        svg.selectAll("path").attr("transform", transform);
+        svg.selectAll("path").attr("stroke-width", 1 / transform.k);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Load data and draw the earth
+    const drawEarth = async () => {
+        try {
+            const data = await d3.csv(`/dataset/csv${selectedYear}.csv`, rowConverter);
+            await createEarth(data);
+        } catch (error) {
+            console.error("Error loading CSV:", error);
+        }
     };
 
     useEffect(() => {
         drawEarth();
         return () => {
-            if (animationFrameId) cancelAnimationFrame(animationFrameId);
-            d3.select(".earth canvas").remove();
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
         };
     }, [selectedYear]);
 
-    return (
-        <div className="flex items-center justify-center h-screen flex-col mb-4 mt-20">
-            <h1 className="text-4xl mb-4 mt-10">Earth</h1>
+    // Separate effect for handling rotation changes
+    useEffect(() => {
+        const svg = d3.select(".earth").select("svg");
+        if (!svg.empty()) {
+            projection.rotate(rotation);
+            svg.selectAll("path").attr("d", path);
+        }
+    }, [rotation]);
 
+    return (
+        <div className="flex items-center justify-center h-screen flex-col mb-4 mt-10">
             <div className="flex items-center justify-center space-x-4 mb-5">
                 <select
                     value={selectedYear}
@@ -314,10 +304,11 @@ export default function Earth() {
                 </Button>
             </div>
 
-            <div className="earth mb-5"></div>
+            <div className="earth mb-5" ref={svgRef}></div>
 
             <div className="flex space-x-4 mb-20">
                 <Button id="rotate-left" 
+                    onClick={() => handleRotate("left")}
                     className="px-8 py-2 text-md font-medium
                     text-white bg-black rounded-md
                     hover:bg-zinc-500 hover:scale-110
@@ -325,6 +316,7 @@ export default function Earth() {
                     transform transition duration-200"
                 >Rotate Left</Button>
                 <Button id="rotate-right"  
+                    onClick={() => handleRotate("right")}
                     className="px-8 py-2 text-md font-medium
                     text-white bg-black rounded-md
                     hover:bg-zinc-500 hover:scale-110
@@ -345,7 +337,14 @@ export default function Earth() {
                     active:bg-zinc-300 active:translate-y-1
                     transform transition duration-200"
                 >Zoom Out</Button>
+                <Button id="reset"
+                    // onClick={reset(svgRef.current)}
+                    className="px-8 py-2 text-md font-medium
+                    text-white bg-black rounded-md
+                    hover:bg-zinc-500 hover:scale-110
+                    active:bg-zinc-300 active:translate-y-1
+                    transform transition duration-200"
+                >Reset</Button>
             </div>
         </div>
-    );
-}
+);}
