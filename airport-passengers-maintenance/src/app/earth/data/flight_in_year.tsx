@@ -71,12 +71,35 @@ const isValidDate = (dateStr: string): boolean => {
   return valid;
 };
 
-// Add season to week mapping
-const seasonWeekMap: { [key: string]: [number, number] } = {
-  'Spring': [1, 13],
-  'Summer': [14, 26],
-  'Fall': [27, 39],
-  'Winter': [40, 52]
+interface SeasonRange {
+  start: { month: number, day: number };
+  end: { month: number, day: number };
+}
+
+const seasonDateRanges: Record<string, SeasonRange> = {
+  'Spring': { start: { month: 1, day: 1 }, end: { month: 3, day: 31 } },
+  'Summer': { start: { month: 4, day: 1 }, end: { month: 6, day: 30 } },
+  'Fall': { start: { month: 7, day: 1 }, end: { month: 9, day: 30 } },
+  'Winter': { start: { month: 10, day: 1 }, end: { month: 12, day: 31 } }
+};
+
+const getSeasonFromDate = (date: Date): string => {
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+
+  // Create a helper function to check if date falls within a range
+  const isDateInRange = (month: number, day: number, range: SeasonRange): boolean => {
+    const currentDate = month * 100 + day;
+    const startDate = range.start.month * 100 + range.start.day;
+    const endDate = range.end.month * 100 + range.end.day;
+    return currentDate >= startDate && currentDate <= endDate;
+  };
+
+  // Check each season
+  if (isDateInRange(month, day, seasonDateRanges.Spring)) return 'Spring';
+  if (isDateInRange(month, day, seasonDateRanges.Summer)) return 'Summer';
+  if (isDateInRange(month, day, seasonDateRanges.Fall)) return 'Fall';
+  return 'Winter';
 };
 
 const FlightInYear: React.FC = () => {
@@ -128,12 +151,14 @@ const FlightInYear: React.FC = () => {
 
     // Format dates and create scales
     const parseDate = d3.timeParse("%d/%m/%Y");
-    const [seasonStart, seasonEnd] = seasonWeekMap[season];
-    const filteredData = dataset.filter(d => 
-      d.Entity === selectedState && 
-      d.Week >= seasonStart && 
-      d.Week <= seasonEnd
-    );
+    
+    // Filter data based on date and season
+    const filteredData = dataset.filter(d => {
+      const parsedDate = parseDate(d.Day);
+      if (!parsedDate) return false;
+      return d.Entity === selectedState && getSeasonFromDate(parsedDate) === season;
+    });
+
     const data: ChartDataPoint[] = filteredData
       .map(d => {
         const parsedDate = parseDate(d.Day);
