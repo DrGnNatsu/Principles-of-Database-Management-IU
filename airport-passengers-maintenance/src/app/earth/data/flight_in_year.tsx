@@ -113,6 +113,9 @@ const FlightInYear: React.FC = () => {
   const [selectedState, setSelectedState] = useState<string>('Total Network Manager Area');
   const [addedStates, setAddedStates] = useState<string[]>([]);
 
+  const colorScale = d3.scaleOrdinal(d3.schemeCategory10)
+    .domain([...new Set(dataset.map(d => d.Entity))]);
+
   useEffect(() => {
     const fetchData = async () => {
       console.log('Fetching data for year:', year);
@@ -245,8 +248,6 @@ const FlightInYear: React.FC = () => {
       .y(d => y(d.Flights))
       .curve(d3.curveMonotoneX);
 
-    const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
-
     // Group data by country
     const dataByCountry = d3.group(filteredData, d => d.Entity);
 
@@ -343,21 +344,75 @@ const FlightInYear: React.FC = () => {
     // After data filtering and before line creation
     const dataByState = d3.group(data, d => d.Entity);
 
-    // Line generator definition
-    const lineGenerator = d3.line<ChartDataPoint>()
-      .x(d => x(d.Date))
-      .y(d => y(d.Flights))
-      .curve(d3.curveMonotoneX);
-
     // Create lines for each state
     dataByState.forEach((stateData, state) => {
+      const stateColor = compareMode ? colorScale(state) : 'steelblue';
+
+      // Create line
       const path = svg.append("path")
         .datum(stateData)
         .attr("class", `line-${state.replace(/\s+/g, '-')}`)
         .attr("fill", "none")
-        .attr("stroke", colorScale(state))
+        .attr("stroke", stateColor)
         .attr("stroke-width", season === 'All' ? 1 : 3)
-        .attr("d", lineGenerator);
+        .attr("d", line);
+
+      // Add dots with matching color
+      svg.selectAll(`.dot-${state.replace(/\s+/g, '-')}`)
+        .data(stateData)
+        .enter()
+        .append("circle")
+        .attr("class", `dot-${state.replace(/\s+/g, '-')}`)
+        .attr("cx", d => x(d.Date))
+        .attr("cy", d => y(d.Flights))
+        .attr("r", season === 'All' ? 4 : 6)
+        .style("fill", stateColor)
+        .on("mouseover", (event, d) => {
+          tooltip
+            .transition()
+            .duration(200)
+            .style("opacity", 0.9)
+            .style("display", "block")
+            .style("background-color", "rgba(0, 0, 0, 0.8)")
+            .style("color", "white")
+            .style("padding", "12px")
+            .style("border-radius", "6px")
+            .style("font-size", "16px")
+            .style("box-shadow", "0 4px 6px rgba(0, 0, 0, 0.1)")
+            .style("left", `${event.pageX + 10}px`)
+            .style("top", `${event.pageY - 28}px`)
+            d3.select("#tooltip").html(`
+              <div style="font-size: 16px;">
+                <div style="font-weight: bold; margin-bottom: 5px;">${d.Entity}</div>
+                <div>Date: <strong>${d.Day}</strong></div>
+                <div>Flights: <strong>${d.Flights}</strong></div>
+              </div>
+            `);
+  
+          d3.select(event.currentTarget)
+            .transition()
+            .duration(200)
+            .attr("r", 9)
+            .style("fill", "#ff4444");
+        })
+        .on("mousemove", (event) => {
+          tooltip
+            .style("left", (event.pageX + 10) + "px")
+            .style("top", (event.pageY + 10) + "px");
+        })
+        .on("mouseout", (event) => {
+          tooltip
+            .transition()
+            .duration(500)
+            .style("opacity", 0)
+            .style("display", "none");
+        
+          d3.select(event.currentTarget)
+            .transition()
+            .duration(200)
+            .attr("r", season === 'All' ? 4 : 6)
+            .style("fill", stateColor);
+        });
 
       // Add line animation
       const totalLength = path.node()?.getTotalLength() || 0;
@@ -397,7 +452,7 @@ const FlightInYear: React.FC = () => {
             id="year-selection"
             value={year}
             onChange={(e) => setYear(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+            className="h-[42px] px-4 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
           >
             <option value="2020">2020</option>
             <option value="2021">2021</option>
@@ -416,7 +471,7 @@ const FlightInYear: React.FC = () => {
               id="state-selection"
               value={selectedState}
               onChange={(e) => setSelectedState(e.target.value)}
-              className="h-full px-4 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
+              className="h-[42px] px-4 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 text-black"
             >
               <option value="">Select a state</option>
               {[...new Set(dataset.map((d) => d.Entity))].map((state) => (
@@ -440,10 +495,17 @@ const FlightInYear: React.FC = () => {
           </div>
           
           {compareMode && (
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-col gap-2 w-full">
               {addedStates.map(state => (
-                <div key={state} className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
-                  <span>{state}</span>
+                <div 
+                  key={state} 
+                  className="flex items-center justify-between w-full px-3 py-2 rounded"
+                  style={{ 
+                    backgroundColor: `${colorScale(state)}20`, // Add 20% opacity
+                    borderLeft: `4px solid ${colorScale(state)}`
+                  }}
+                >
+                  <span className="text-black">{state}</span>
                   <button
                     onClick={() => setAddedStates(addedStates.filter(s => s !== state))}
                     className="text-red-500 hover:text-red-700"
