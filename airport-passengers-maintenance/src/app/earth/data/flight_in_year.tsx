@@ -105,10 +105,13 @@ const getSeasonFromDate = (date: Date): string => {
 
 const FlightInYear: React.FC = () => {
   const [dataset, setDataset] = useState<DataPoint[]>([]);
+  
   const [year, setYear] = useState("2023");
-  const [selectedState, setSelectedState] = useState("Total Network Manager Area");
   const [season, setSeason] = useState("All");
+  
   const [compareMode, setCompareMode] = useState(false);
+  const [selectedState, setSelectedState] = useState<string>('Albania'); // For single selection
+  const [selectedStates, setSelectedStates] = useState<string[]>([]); // For multiple selection
 
   useEffect(() => {
     const fetchData = async () => {
@@ -158,7 +161,7 @@ const FlightInYear: React.FC = () => {
     const filteredData = dataset.filter(d => {
       const parsedDate = parseDate(d.Day);
       if (!parsedDate) return false;
-      return d.Entity === selectedState && 
+      return (compareMode ? selectedStates : [selectedState]).includes(d.Entity) && 
         (season === 'All' || getSeasonFromDate(parsedDate) === season);
     });
 
@@ -170,7 +173,7 @@ const FlightInYear: React.FC = () => {
         return {
           ...d,
           Date: parsedDate
-        };
+        } as ChartDataPoint;
       })
       .filter((d): d is ChartDataPoint => d !== null)
       .sort((a, b) => a.Date.getTime() - b.Date.getTime());
@@ -242,12 +245,57 @@ const FlightInYear: React.FC = () => {
       .y(d => y(d.Flights))
       .curve(d3.curveMonotoneX);
 
-    svg.append("path")
-      .datum(data)
-      .attr("fill", "none")
-      .attr("stroke", "steelblue")
-      .attr("stroke-width", 2)
-      .attr("d", line);
+    const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+    // Group data by country
+    const dataByCountry = d3.group(filteredData, d => d.Entity);
+
+    // Create lines for each country
+    dataByCountry.forEach((countryData, country) => {
+      const path = svg.append("path")
+        .datum(countryData)
+        .attr("class", `line-${country.replace(/\s+/g, '-')}`)
+        .attr("fill", "none")
+        .attr("stroke", color(country))
+        .attr("stroke-width", 2)
+        .attr("d", line as any);
+
+      // Add line animation
+      const totalLength = path.node()?.getTotalLength() || 0;
+      path
+        .attr("stroke-dasharray", totalLength)
+        .attr("stroke-dashoffset", totalLength)
+        .transition()
+        .duration(2000)
+        .attr("stroke-dashoffset", 0);
+    });
+
+    // Add legend
+    const legend = svg.append("g")
+      .attr("class", "legend")
+      .attr("transform", `translate(${width + 20}, 0)`);
+
+    Array.from(dataByCountry.keys()).forEach((country, i) => {
+      const lg = legend.append("g")
+        .attr("transform", `translate(0,${i * 20})`)
+        .style("cursor", "pointer")
+        .on("click", () => {
+          const line = svg.select(`.line-${country.replace(/\s+/g, '-')}`);
+          const currentOpacity = line.style("opacity");
+          line.style("opacity", currentOpacity === "1" ? "0" : "1");
+        });
+
+      lg.append("rect")
+        .attr("width", 15)
+        .attr("height", 15)
+        .attr("fill", color(country));
+
+      lg.append("text")
+        .attr("x", 20)
+        .attr("y", 12)
+        .text(country)
+        .style("font-size", "12px");
+    });
 
     // Add interactive dots
     svg.selectAll(".dot")
@@ -362,7 +410,7 @@ const FlightInYear: React.FC = () => {
         .style("opacity", 1);
     }, 0);
 
-  }, [dataset, selectedState, season]); // Add season to dependencies
+  }, [dataset, selectedState, selectedStates, season, compareMode]); // Add season to dependencies
 
   return (
     <div className="w-full flex flex-col">
@@ -405,8 +453,17 @@ const FlightInYear: React.FC = () => {
           </label>
           <select
             id="state-selection"
-            value={selectedState}
-            onChange={(e) => setSelectedState(e.target.value)}
+            multiple={compareMode}
+            value={compareMode ? selectedStates : selectedState}
+            onChange={(e) => {
+              if (compareMode) {
+                const values = Array.from(e.target.selectedOptions).map(opt => opt.value);
+                setSelectedStates(values);
+              } else {
+                setSelectedState(e.target.value);
+                setSelectedStates([e.target.value]);
+              }
+            }}
             className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
           >
             {[...new Set(dataset.map((d) => d.Entity))].map((state) => (
