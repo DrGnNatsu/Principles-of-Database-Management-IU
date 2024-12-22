@@ -161,7 +161,7 @@ const FlightInYear: React.FC = () => {
     const filteredData = dataset.filter(d => {
       const parsedDate = parseDate(d.Day);
       if (!parsedDate) return false;
-      return addedStates.includes(d.Entity) && 
+      return (compareMode ? addedStates.includes(d.Entity) : d.Entity === selectedState) && 
         (season === 'All' || getSeasonFromDate(parsedDate) === season);
     });
 
@@ -250,51 +250,25 @@ const FlightInYear: React.FC = () => {
     // Group data by country
     const dataByCountry = d3.group(filteredData, d => d.Entity);
 
-    // Create lines for each country
-    dataByCountry.forEach((countryData, country) => {
+    // Create lines for each state
+    dataByCountry.forEach((stateData, state) => {
       const path = svg.append("path")
-        .datum(countryData)
-        .attr("class", `line-${country.replace(/\s+/g, '-')}`)
+        .datum(stateData)
+        .attr("class", `line-${state.replace(/\s+/g, '-')}`)
         .attr("fill", "none")
-        .attr("stroke", color(country))
+        .attr("stroke", color(state))
         .attr("stroke-width", 2)
         .attr("d", line as any);
 
       // Add line animation
       const totalLength = path.node()?.getTotalLength() || 0;
       path
-        .attr("stroke-dasharray", totalLength)
+        .attr("stroke-dasharray", `${totalLength} ${totalLength}`)
         .attr("stroke-dashoffset", totalLength)
         .transition()
         .duration(2000)
+        .ease(d3.easeLinear)
         .attr("stroke-dashoffset", 0);
-    });
-
-    // Add legend
-    const legend = svg.append("g")
-      .attr("class", "legend")
-      .attr("transform", `translate(${width + 20}, 0)`);
-
-    Array.from(dataByCountry.keys()).forEach((country, i) => {
-      const lg = legend.append("g")
-        .attr("transform", `translate(0,${i * 20})`)
-        .style("cursor", "pointer")
-        .on("click", () => {
-          const line = svg.select(`.line-${country.replace(/\s+/g, '-')}`);
-          const currentOpacity = line.style("opacity");
-          line.style("opacity", currentOpacity === "1" ? "0" : "1");
-        });
-
-      lg.append("rect")
-        .attr("width", 15)
-        .attr("height", 15)
-        .attr("fill", color(country));
-
-      lg.append("text")
-        .attr("x", 20)
-        .attr("y", 12)
-        .text(country)
-        .style("font-size", "12px");
     });
 
     // Add interactive dots
@@ -305,7 +279,7 @@ const FlightInYear: React.FC = () => {
       .attr("class", "dot")
       .attr("cx", d => x(d.Date))
       .attr("cy", d => y(d.Flights))
-      .attr("r", 4)
+      .attr("r", season === 'All' ? 4 : 6)
       .style("fill", "steelblue")
       .on("mouseover", (event, d) => {
         tooltip
@@ -332,7 +306,7 @@ const FlightInYear: React.FC = () => {
         d3.select(event.currentTarget)
           .transition()
           .duration(200)
-          .attr("r", 8)
+          .attr("r", 9)
           .style("fill", "#ff4444");
       })
       .on("mousemove", (event) => {
@@ -350,7 +324,7 @@ const FlightInYear: React.FC = () => {
         d3.select(event.currentTarget)
           .transition()
           .duration(200)
-          .attr("r", 4)
+          .attr("r", season === 'All' ? 4 : 6)
           .style("fill", "steelblue");
       });
 
@@ -377,7 +351,7 @@ const FlightInYear: React.FC = () => {
       .attr("class", "linePath")
       .attr("fill", "none")
       .attr("stroke", "steelblue")
-      .attr("stroke-width", 2)
+      .attr("stroke-width", season === 'All' ? 1 : 3)
       .attr("d", lineGenerator)
       .attr("stroke-dasharray", function() {
         const totalLength = (this as SVGPathElement).getTotalLength();
