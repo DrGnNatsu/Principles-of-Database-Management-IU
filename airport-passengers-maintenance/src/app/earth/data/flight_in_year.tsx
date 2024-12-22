@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import * as d3 from "d3";
-import { Selection } from 'd3';
 
 interface DataPoint {
   Entity: string;
@@ -109,11 +108,6 @@ const FlightInYear: React.FC = () => {
   const [year, setYear] = useState("2020");
   const [selectedState, setSelectedState] = useState("Total Network Manager Area");
   const [season, setSeason] = useState("All");
-  const svgRef = useRef<SVGSVGElement | null>(null);
-  const zoomRef = useRef(
-    d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([1, 5])
-  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -148,7 +142,6 @@ const FlightInYear: React.FC = () => {
     // Create SVG with responsive width
     const svg = d3.select("#line-chart")
       .append("svg")
-      .attr("ref", () => svgRef.current)
       .attr("width", width + margin.left + margin.right)
       .attr("height", height + margin.top + margin.bottom)
       .append("g")
@@ -190,24 +183,6 @@ const FlightInYear: React.FC = () => {
       .domain([0, d3.max(data, d => d.Flights) || 0])
       .range([height, 0])
       .nice(); 
-
-    // Add zoom behavior
-    const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([1, 5])
-      .extent([[0, 0], [width, height]])
-      .on("zoom", zoomed);
-
-    // Add clip path
-    svg.append("defs")
-      .append("clipPath")
-      .attr("id", "clip")
-      .append("rect")
-      .attr("width", width)
-      .attr("height", height);
-
-    // Create group for zooming
-    const chartGroup = svg.append("g")
-      .attr("clip-path", "url(#clip)");
 
     // X axis
     svg.append("g")
@@ -266,39 +241,61 @@ const FlightInYear: React.FC = () => {
       .y(d => y(d.Flights))
       .curve(d3.curveMonotoneX);
 
-    chartGroup.append("path")
+    svg.append("path")
       .datum(data)
-      .attr("class", "line")
       .attr("fill", "none")
       .attr("stroke", "steelblue")
       .attr("stroke-width", 2)
       .attr("d", line);
 
     // Add interactive dots
-    chartGroup.selectAll(".dot")
+    svg.selectAll(".dot")
       .data(data)
       .enter()
       .append("circle")
       .attr("class", "dot")
-      .attr("r", 5)
       .attr("cx", d => x(d.Date))
       .attr("cy", d => y(d.Flights))
-      .attr("fill", "steelblue")
+      .attr("r", 4)
+      .style("fill", "steelblue")
       .on("mouseover", (event, d) => {
         tooltip
-          .style("visibility", "visible")
+          .style("opacity", 0.9)
+          .style("display", "block")
+          .style("background-color", "rgba(0, 0, 0, 0.8)")
+          .style("color", "white")
+          .style("padding", "12px")
+          .style("border-radius", "6px")
+          .style("font-size", "16px")
+          .style("box-shadow", "0 4px 6px rgba(0, 0, 0, 0.1)")
+          .style("left", `${event.pageX + 10}px`)
+          .style("top", `${event.pageY - 28}px`)
           .html(`
-            Date: ${d3.timeFormat("%B %d, %Y")(d.Date)}<br/>
-            Flights: ${d.Flights}
+            <div style="font-size: 16px;">
+              <div style="font-weight: bold; margin-bottom: 5px;">${d.Entity}</div>
+              <div>Date: <strong>${d.Day}</strong></div>
+              <div>Flights: <strong>${d.Flights}</strong></div>
+            </div>
           `);
+
+        d3.select(event.currentTarget)
+          .transition()
+          .duration(200)
+          .attr("r", 8)
+          .style("fill", "#ff4444");
       })
-      .on("mousemove", (event) => {
+      .on("mouseout", (event) => {
         tooltip
-          .style("top", (event.pageY - 10) + "px")
-          .style("left", (event.pageX + 10) + "px");
-      })
-      .on("mouseout", () => {
-        tooltip.style("visibility", "hidden");
+          .transition()
+          .duration(500)
+          .style("opacity", 0)
+          .style("display", "none");
+      
+        d3.select(event.currentTarget)
+          .transition()
+          .duration(200)
+          .attr("r", 4)
+          .style("fill", "steelblue");
       });
 
     // Add Y axis label
@@ -311,27 +308,6 @@ const FlightInYear: React.FC = () => {
       .text("Number of Flights")
       .style("font-size", "16px")
       .style("font-weight", "bold");
-
-    // Zooming function
-    function zoomed(event: d3.D3ZoomEvent<SVGSVGElement, unknown>) {
-      // Update scales
-      const newX = event.transform.rescaleX(x);
-      
-      // Update axes
-      svg.select<SVGGElement>(".x-axis").call(d3.axisBottom(newX));
-      
-      // Update line
-      chartGroup.select(".line")
-        .attr("d", (d3.line<ChartDataPoint>()
-          .x(d => newX(d.Date))
-          .y(d => y(d.Flights))) as any
-        );
-
-      // Update dots with proper typing
-      chartGroup.selectAll<SVGCircleElement, ChartDataPoint>(".dot")
-        .attr("cx", function(d) { return newX(d.Date); })
-        .attr("cy", function(d) { return y(d.Flights); });
-    }
 
   }, [dataset, selectedState, season]); // Add season to dependencies
 
@@ -395,6 +371,7 @@ const FlightInYear: React.FC = () => {
           </select>
         </div>
       </div>
+
       
       <div 
         id="line-chart" 
