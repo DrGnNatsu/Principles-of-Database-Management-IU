@@ -8,7 +8,7 @@ export default function EarthPage (){
             <div>
                 <Earth/>
             </div>
-            <div className="w-full max-w-7xl bg-neutral-50 rounded-lg shadow-lg p-6 flex justify-center items-center">
+            <div className="w-full max-w-full bg-neutral-50 rounded-lg shadow-lg p-6 flex justify-center items-center">
                 <ZoomChart/>
             </div>
         </div>

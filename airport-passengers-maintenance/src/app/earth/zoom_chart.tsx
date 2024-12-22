@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import * as d3 from "d3";
+import Link from 'next/link';
+import { ChartBarIcon } from '@heroicons/react/24/outline';
 
 interface DataPoint {
   Entity: string;
@@ -117,11 +119,16 @@ const ZoomChart: React.FC = () => {
 
     // Parse and filter data
     const parseDate = d3.timeParse("%d/%m/%Y");
+
     const filteredData = dataset.filter(d => {
-      const parsedDate = parseDate(d.Day);
-      if (!parsedDate) return false;
-      return d.Entity === selectedState && 
-        (season === 'All' || getSeasonFromDate(parsedDate) === season);
+        const parsedDate = parseDate(d.Day);
+      
+        if (!parsedDate) return false;
+
+        // Filter data by date range
+
+        return d.Entity === selectedState && 
+            (season === 'All' || getSeasonFromDate(parsedDate) === season);
     });
 
     const data: ChartDataPoint[] = filteredData
@@ -156,6 +163,7 @@ const ZoomChart: React.FC = () => {
       .style("text-anchor", "end")
       .style("font-size", "12px")
       .style("color", "black")
+      .style("font-weight", "bold")
       .attr("dx", "-.8em")
       .attr("dy", ".15em")
       .attr("transform", "rotate(-45)")
@@ -226,6 +234,36 @@ const ZoomChart: React.FC = () => {
           .style("display", "none");
       });
 
+    // Define zoom behavior
+    const zoomBehavior = d3.zoom()
+      .scaleExtent([1, 8])  // Adjust min/max zoom
+      .translateExtent([[0, 0], [width, height]])
+      .extent([[0, 0], [width, height]])
+      .on("zoom", (event) => {
+        // Apply transformation
+        const { transform } = event;
+        // Update x scale
+        const newX = transform.rescaleX(x);
+        // Update bars
+        svg.selectAll(".bar")
+          .attr("x", (d: ChartDataPoint) => newX(d.Day) || 0)
+          .attr("width", newX.bandwidth ? newX.bandwidth() : (x.bandwidth() * transform.k));
+
+        // Update X axis
+        svg.select<SVGGElement>(".x-axis")
+          .call(d3.axisBottom(newX)
+            .tickFormat((d, i) => i % 7 === 0 ? (d as string) : ''));
+      });
+
+    // Add a rectangle to capture zoom events
+    svg.append("rect")
+      .attr("class", "zoom-rect")
+      .attr("width", width)
+      .attr("height", height)
+      .style("fill", "none")
+      .style("pointer-events", "all")
+      .call(zoomBehavior as any);
+
     // Add title
     svg.append("text")
       .attr("x", width / 2)
@@ -277,6 +315,7 @@ const ZoomChart: React.FC = () => {
               </option>
             ))}
           </select>
+
         </div>
 
         <div className="flex flex-col items-center">
@@ -296,6 +335,7 @@ const ZoomChart: React.FC = () => {
             <option value="Winter">Winter</option>
           </select>
         </div>
+
       </div>
 
       <div 
@@ -303,6 +343,16 @@ const ZoomChart: React.FC = () => {
         className="w-full h-[600px] bg-white rounded-lg overflow-hidden"
       ></div>
       
+      <div className="flex justify-center mb-4 mt-6">
+        <Link 
+            href="/earth/data"
+            className="bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-full transition duration-300 ease-in-out transform hover:scale-105 flex items-center gap-2"
+        >
+            <ChartBarIcon className="w-5 h-5" />
+            <span>VIEW DAILY TRAFFIC DASHBOARD</span>
+        </Link>
+      </div>
+
       <div 
         id="tooltip" 
         style={{
