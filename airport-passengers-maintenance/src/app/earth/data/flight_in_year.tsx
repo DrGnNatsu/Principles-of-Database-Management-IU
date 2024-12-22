@@ -92,7 +92,7 @@ const getSeasonFromDate = (date: Date): string => {
   const isDateInRange = (month: number, day: number, range: SeasonRange): boolean => {
     const currentDate = month * 100 + day;
     const startDate = range.start.month * 100 + range.start.day;
-    const endDate = range.end.month * 100 + range.end.day;
+    const endDate = range.end.month * 100 + day;
     return currentDate >= startDate && currentDate <= endDate;
   };
 
@@ -105,9 +105,16 @@ const getSeasonFromDate = (date: Date): string => {
 
 const FlightInYear: React.FC = () => {
   const [dataset, setDataset] = useState<DataPoint[]>([]);
-  const [year, setYear] = useState("2020");
-  const [selectedState, setSelectedState] = useState("Total Network Manager Area");
+  
+  const [year, setYear] = useState("2023");
   const [season, setSeason] = useState("All");
+  
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedState, setSelectedState] = useState<string>('Total Network Manager Area');
+  const [addedStates, setAddedStates] = useState<string[]>([]);
+
+  const colorScale = d3.scaleOrdinal(d3.schemeCategory10)
+    .domain([...new Set(dataset.map(d => d.Entity))]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -157,7 +164,7 @@ const FlightInYear: React.FC = () => {
     const filteredData = dataset.filter(d => {
       const parsedDate = parseDate(d.Day);
       if (!parsedDate) return false;
-      return d.Entity === selectedState && 
+      return (compareMode ? addedStates.includes(d.Entity) : d.Entity === selectedState) && 
         (season === 'All' || getSeasonFromDate(parsedDate) === season);
     });
 
@@ -169,7 +176,7 @@ const FlightInYear: React.FC = () => {
         return {
           ...d,
           Date: parsedDate
-        };
+        } as ChartDataPoint;
       })
       .filter((d): d is ChartDataPoint => d !== null)
       .sort((a, b) => a.Date.getTime() - b.Date.getTime());
@@ -241,12 +248,29 @@ const FlightInYear: React.FC = () => {
       .y(d => y(d.Flights))
       .curve(d3.curveMonotoneX);
 
-    svg.append("path")
-      .datum(data)
-      .attr("fill", "none")
-      .attr("stroke", "steelblue")
-      .attr("stroke-width", 2)
-      .attr("d", line);
+    // Group data by country
+    const dataByCountry = d3.group(filteredData, d => d.Entity);
+
+    // Create lines for each state
+    dataByCountry.forEach((stateData, state) => {
+      const path = svg.append("path")
+        .datum(stateData)
+        .attr("class", `line-${state.replace(/\s+/g, '-')}`)
+        .attr("fill", "none")
+        .attr("stroke", colorScale(state))
+        .attr("stroke-width", 2)
+        .attr("d", line as any);
+
+      // Add line animation
+      const totalLength = path.node()?.getTotalLength() || 0;
+      path
+        .attr("stroke-dasharray", `${totalLength} ${totalLength}`)
+        .attr("stroke-dashoffset", totalLength)
+        .transition()
+        .duration(2000)
+        .ease(d3.easeLinear)
+        .attr("stroke-dashoffset", 0);
+    });
 
     // Add interactive dots
     svg.selectAll(".dot")
@@ -256,10 +280,12 @@ const FlightInYear: React.FC = () => {
       .attr("class", "dot")
       .attr("cx", d => x(d.Date))
       .attr("cy", d => y(d.Flights))
-      .attr("r", 4)
+      .attr("r", season === 'All' ? 4 : 6)
       .style("fill", "steelblue")
       .on("mouseover", (event, d) => {
         tooltip
+          .transition()
+          .duration(200)
           .style("opacity", 0.9)
           .style("display", "block")
           .style("background-color", "rgba(0, 0, 0, 0.8)")
@@ -270,7 +296,7 @@ const FlightInYear: React.FC = () => {
           .style("box-shadow", "0 4px 6px rgba(0, 0, 0, 0.1)")
           .style("left", `${event.pageX + 10}px`)
           .style("top", `${event.pageY - 28}px`)
-          .html(`
+          d3.select("#tooltip").html(`
             <div style="font-size: 16px;">
               <div style="font-weight: bold; margin-bottom: 5px;">${d.Entity}</div>
               <div>Date: <strong>${d.Day}</strong></div>
@@ -281,8 +307,13 @@ const FlightInYear: React.FC = () => {
         d3.select(event.currentTarget)
           .transition()
           .duration(200)
-          .attr("r", 8)
+          .attr("r", 9)
           .style("fill", "#ff4444");
+      })
+      .on("mousemove", (event) => {
+        tooltip
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY + 10) + "px");
       })
       .on("mouseout", (event) => {
         tooltip
@@ -294,7 +325,7 @@ const FlightInYear: React.FC = () => {
         d3.select(event.currentTarget)
           .transition()
           .duration(200)
-          .attr("r", 4)
+          .attr("r", season === 'All' ? 4 : 6)
           .style("fill", "steelblue");
       });
 
@@ -309,10 +340,107 @@ const FlightInYear: React.FC = () => {
       .style("font-size", "16px")
       .style("font-weight", "bold");
 
-  }, [dataset, selectedState, season]); // Add season to dependencies
+
+    // After data filtering and before line creation
+    const dataByState = d3.group(data, d => d.Entity);
+
+    // Create lines for each state
+    dataByState.forEach((stateData, state) => {
+      const stateColor = compareMode ? colorScale(state) : 'steelblue';
+
+      // Create line
+      const path = svg.append("path")
+        .datum(stateData)
+        .attr("class", `line-${state.replace(/\s+/g, '-')}`)
+        .attr("fill", "none")
+        .attr("stroke", stateColor)
+        .attr("stroke-width", season === 'All' ? 1 : 3)
+        .attr("d", line);
+
+      // Add dots with matching color
+      svg.selectAll(`.dot-${state.replace(/\s+/g, '-')}`)
+        .data(stateData)
+        .enter()
+        .append("circle")
+        .attr("class", `dot-${state.replace(/\s+/g, '-')}`)
+        .attr("cx", d => x(d.Date))
+        .attr("cy", d => y(d.Flights))
+        .attr("r", season === 'All' ? 4 : 6)
+        .style("fill", stateColor)
+        .on("mouseover", (event, d) => {
+          tooltip
+            .transition()
+            .duration(200)
+            .style("opacity", 0.9)
+            .style("display", "block")
+            .style("background-color", "rgba(0, 0, 0, 0.8)")
+            .style("color", "white")
+            .style("padding", "12px")
+            .style("border-radius", "6px")
+            .style("font-size", "16px")
+            .style("box-shadow", "0 4px 6px rgba(0, 0, 0, 0.1)")
+            .style("left", `${event.pageX + 10}px`)
+            .style("top", `${event.pageY - 28}px`)
+            d3.select("#tooltip").html(`
+              <div style="font-size: 16px;">
+                <div style="font-weight: bold; margin-bottom: 5px;">${d.Entity}</div>
+                <div>Date: <strong>${d.Day}</strong></div>
+                <div>Flights: <strong>${d.Flights}</strong></div>
+              </div>
+            `);
+  
+          d3.select(event.currentTarget)
+            .transition()
+            .duration(200)
+            .attr("r", 9)
+            .style("fill", "#ff4444");
+        })
+        .on("mousemove", (event) => {
+          tooltip
+            .style("left", (event.pageX + 10) + "px")
+            .style("top", (event.pageY + 10) + "px");
+        })
+        .on("mouseout", (event) => {
+          tooltip
+            .transition()
+            .duration(500)
+            .style("opacity", 0)
+            .style("display", "none");
+        
+          d3.select(event.currentTarget)
+            .transition()
+            .duration(200)
+            .attr("r", season === 'All' ? 4 : 6)
+            .style("fill", stateColor);
+        });
+
+      // Add line animation
+      const totalLength = path.node()?.getTotalLength() || 0;
+      path
+        .attr("stroke-dasharray", `${totalLength} ${totalLength}`)
+        .attr("stroke-dashoffset", totalLength)
+        .transition()
+        .duration(2000)
+        .ease(d3.easeLinear)
+        .attr("stroke-dashoffset", 0);
+    });
+
+  }, [dataset, selectedState, addedStates, season, compareMode]); // Add season to dependencies
 
   return (
     <div className="w-full flex flex-col">
+      <h2 className="text-2xl font-bold mb-4 text-black text-center">Number of Flights in {year}</h2>
+      <p className="text-md text-center text-gray-600 mb-4">
+        This chart displays the total number of flights across different dates.
+      </p>
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => setCompareMode(!compareMode)}
+          className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"
+        >
+          {compareMode ? 'Disable Compare State' : 'Enable Compare State'}
+        </button>
+      </div>
       <div className="mb-6 flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-6">
         
         {/* Year Selection */}
@@ -324,7 +452,7 @@ const FlightInYear: React.FC = () => {
             id="year-selection"
             value={year}
             onChange={(e) => setYear(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+            className="h-[42px] px-4 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
           >
             <option value="2020">2020</option>
             <option value="2021">2021</option>
@@ -338,18 +466,56 @@ const FlightInYear: React.FC = () => {
           <label htmlFor="state-selection" className="mb-2 text-lg font-medium text-black">
             State:
           </label>
-          <select
-            id="state-selection"
-            value={selectedState}
-            onChange={(e) => setSelectedState(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
-          >
-            {[...new Set(dataset.map((d) => d.Entity))].map((state) => (
-              <option key={state} value={state}>
-                {state}
-              </option>
-            ))}
-          </select>
+          <div className="flex gap-2 h-[42px]"> {/* Set fixed height container */}
+            <select
+              id="state-selection"
+              value={selectedState}
+              onChange={(e) => setSelectedState(e.target.value)}
+              className="h-[42px] px-4 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 text-black"
+            >
+              <option value="">Select a state</option>
+              {[...new Set(dataset.map((d) => d.Entity))].map((state) => (
+                <option key={state} value={state}>
+                  {state}
+                </option>
+              ))}
+            </select>
+            {compareMode && (
+              <button
+                onClick={() => {
+                  if (selectedState && !addedStates.includes(selectedState)) {
+                    setAddedStates([...addedStates, selectedState]);
+                  }
+                }}
+                className="h-full px-4 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Add State
+              </button>
+            )}
+          </div>
+          
+          {compareMode && (
+            <div className="mt-2 flex flex-col gap-2 w-full">
+              {addedStates.map(state => (
+                <div 
+                  key={state} 
+                  className="flex items-center justify-between w-full px-3 py-2 rounded"
+                  style={{ 
+                    backgroundColor: `${colorScale(state)}20`, // Add 20% opacity
+                    borderLeft: `4px solid ${colorScale(state)}`
+                  }}
+                >
+                  <span className="text-black">{state}</span>
+                  <button
+                    onClick={() => setAddedStates(addedStates.filter(s => s !== state))}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Season Selection */}
@@ -361,7 +527,7 @@ const FlightInYear: React.FC = () => {
             id="season-selection"
             value={season}
             onChange={(e) => setSeason(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+            className="h-[42px] px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
           >
             <option value="All">All Seasons</option>
             <option value="Spring">Spring</option>
@@ -372,7 +538,6 @@ const FlightInYear: React.FC = () => {
         </div>
       </div>
 
-      
       <div 
         id="line-chart" 
         className="w-full h-[600px] bg-white rounded-lg overflow-hidden"
