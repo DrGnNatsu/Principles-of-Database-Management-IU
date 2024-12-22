@@ -212,8 +212,8 @@ export default function HeatMap({
     const handle_mouseleave = (event: MouseEvent, d: HeatMapData) => {
       // Remove stroke from the rectangle when mouse leaves
       d3.select(event.currentTarget as SVGRectElement)
-        .style('stroke', 'none') // Remove stroke color
-        .style('stroke-width', '0'); // Remove stroke width
+        .style('stroke', 'black')
+        .style('stroke-width', '0.7'); 
     
       // Hide tooltip
       tooltip.transition().duration(200).style('opacity', 0);
@@ -307,6 +307,8 @@ export default function HeatMap({
             .attr('rx', 3)
             .attr('ry', 3)
             .style('fill', d => color(d.flights / d.flights_2019_reference))
+            .attr('stroke', 'black')  // Add black border
+            .attr('stroke-width', 0.7)  // Set border width
             .style('opacity', 0);
     
           rect.transition()
