@@ -188,6 +188,66 @@ const ZoomChart: React.FC = () => {
           .attr("dx", "-1em"); 
       });
 
+    // Append the zoom rectangle *first* so it sits behind bars
+    const zoomRect = svg.append("rect")
+      .attr("class", "zoom-rect")
+      .attr("width", width)
+      .attr("height", height)
+      .attr("fill", "none")
+      .style("pointer-events", "all");
+
+    // Define zoom behavior for a band scale
+    const zoomBehavior = d3.zoom<SVGRectElement, unknown>()
+      .scaleExtent([1, 5])
+      .translateExtent([[0, 0], [width, height]])
+      .extent([[0, 0], [width, height]])
+      .on("zoom", (event) => {
+        const { transform } = event;
+
+        // Update x scale
+        const newXRange = x.range().map(r => transform.applyX(r));
+        const newX = x.copy().range(newXRange);
+
+        // Update y scale
+        const newYScale = transform.rescaleY(y);
+
+        // Update bars with new scales
+        svg.selectAll<SVGRectElement, ChartDataPoint>(".bar")
+          .attr("x", d => newX(d.Day) ?? 0)
+          .attr("y", d => newYScale(d.Flights))
+          .attr("width", newX.bandwidth())
+          .attr("height", d => height - newYScale(d.Flights));
+
+        // Update X axis
+        svg.select<SVGGElement>(".x-axis")
+          .call(d3.axisBottom(newX))
+          .selectAll("text")
+          .style("text-anchor", "end")
+          .attr("dx", "-.8em")
+          .attr("dy", ".15em")
+          .attr("transform", "rotate(-45)");
+
+        // Update Y axis with grid lines
+        svg.select<SVGGElement>(".y-axis")
+          .call(d3.axisLeft(newYScale)
+            .ticks(10)
+            .tickSize(-width))
+          .call(g => {
+            g.select(".domain").remove();
+            g.selectAll(".tick line")
+              .attr("stroke", "#e0e0e0")
+              .attr("stroke-dasharray", "2,2");
+            g.selectAll(".tick text")
+              .attr("color", "black")
+              .style("font-size", "14px")
+              .style("font-weight", "bold")
+              .attr("dx", "-1em");
+          });
+      });
+
+    // Call zoom behavior on the rectangle
+    zoomRect.call(zoomBehavior);
+
     // Create bars
     svg.selectAll(".bar")
       .data(data)
@@ -233,36 +293,6 @@ const ZoomChart: React.FC = () => {
         d3.select("#tooltip")
           .style("display", "none");
       });
-
-    // Define zoom behavior
-    const zoomBehavior = d3.zoom()
-      .scaleExtent([1, 8])  // Adjust min/max zoom
-      .translateExtent([[0, 0], [width, height]])
-      .extent([[0, 0], [width, height]])
-      .on("zoom", (event) => {
-        // Apply transformation
-        const { transform } = event;
-        // Update x scale
-        const newX = transform.rescaleX(x);
-        // Update bars
-        svg.selectAll(".bar")
-          .attr("x", (d: ChartDataPoint) => newX(d.Day) || 0)
-          .attr("width", newX.bandwidth ? newX.bandwidth() : (x.bandwidth() * transform.k));
-
-        // Update X axis
-        svg.select<SVGGElement>(".x-axis")
-          .call(d3.axisBottom(newX)
-            .tickFormat((d, i) => i % 7 === 0 ? (d as string) : ''));
-      });
-
-    // Add a rectangle to capture zoom events
-    svg.append("rect")
-      .attr("class", "zoom-rect")
-      .attr("width", width)
-      .attr("height", height)
-      .style("fill", "none")
-      .style("pointer-events", "all")
-      .call(zoomBehavior as any);
 
     // Add title
     svg.append("text")
