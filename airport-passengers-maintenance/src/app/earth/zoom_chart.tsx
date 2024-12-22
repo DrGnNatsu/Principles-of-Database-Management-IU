@@ -117,6 +117,18 @@ const ZoomChart: React.FC = () => {
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
+    // Add clipPath definition after creating svg
+    svg.append("defs")
+      .append("clipPath")
+      .attr("id", "clip")
+      .append("rect")
+      .attr("width", width)
+      .attr("height", height);
+
+    // Create a group for bars with clip-path
+    const barsGroup = svg.append("g")
+      .attr("clip-path", "url(#clip)");
+
     // Parse and filter data
     const parseDate = d3.timeParse("%d/%m/%Y");
 
@@ -183,12 +195,14 @@ const ZoomChart: React.FC = () => {
         g.select(".domain").remove();
         g.selectAll(".tick line")
           .attr("stroke", "#e0e0e0")
-          .attr("stroke-dasharray", "2,2");
+          .attr("stroke-dasharray", "2,2")
+          .style("pointer-events", "none");
         g.selectAll(".tick text")
           .attr("color", "black")
           .style("font-size", "14px")
           .style("font-weight", "bold")
-          .attr("dx", "-1em"); 
+          .attr("dx", "-1em")
+          .style("pointer-events", "all"); // Ensure text remains interactive
       });
 
     // Append the zoom rectangle *first* so it sits behind bars
@@ -213,8 +227,8 @@ const ZoomChart: React.FC = () => {
         // Update y scale
         const newYScale = transform.rescaleY(y);
 
-        // Update bars with new scales
-        svg.selectAll<SVGRectElement, ChartDataPoint>(".bar")
+        // Update bars with new scales (using barsGroup)
+        barsGroup.selectAll<SVGRectElement, ChartDataPoint>(".bar")
           .attr("x", d => newX(d.Date))
           .attr("y", d => newYScale(d.Flights))
           .attr("width", barWidth * transform.k)
@@ -255,8 +269,8 @@ const ZoomChart: React.FC = () => {
     // Call zoom behavior on the rectangle
     zoomRect.call(zoomBehavior);
 
-    // Create bars
-    svg.selectAll(".bar")
+    // Create bars inside the clipped group instead of directly on svg
+    barsGroup.selectAll(".bar")
       .data(data)
       .join("rect")
       .attr("class", "bar")
