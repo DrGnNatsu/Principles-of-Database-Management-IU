@@ -132,7 +132,7 @@ export default function Earth() {
         // Update or create sphere
         let sphere = svg.select(".sphere");
         if (sphere.empty()) {
-            sphere = svg.append<SVGPathElement>("path")
+            sphere = svg.append("path")
                 .attr("class", "sphere")
                 .datum({ type: "Sphere" })
                 .attr("fill", "#2F4B7C")
@@ -430,7 +430,7 @@ export default function Earth() {
                 </Button>
             </div>
 
-            <div className="earth mb-5"></div>
+            <div className="earth mb-5" ref={svgRef}></div>
 
             <div className="flex space-x-4 mb-20">
                 <Button id="rotate-left" 
@@ -455,7 +455,7 @@ export default function Earth() {
                     onClick={() => d3.select(".earth").select("svg")
                         .transition()
                         .duration(500)
-                        .call((zoom as any).scaleBy, 2.0)}
+                        .call(zoom.scaleBy, 2.0)}
                     className="px-8 py-2 text-md font-medium
                     text-white bg-black rounded-md
                     hover:bg-zinc-500 hover:scale-110
@@ -466,7 +466,7 @@ export default function Earth() {
                     onClick={() => d3.select(".earth").select("svg")
                         .transition()
                         .duration(500)
-                        .call((zoom as any).scaleBy, 0.5)
+                        .call(zoom.scaleBy, 0.5)
                     }   
                     className="px-8 py-2 text-md font-medium
                     text-white bg-black rounded-md
