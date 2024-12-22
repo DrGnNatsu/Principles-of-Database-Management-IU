@@ -438,7 +438,7 @@ const FlightInYear: React.FC = () => {
           onClick={() => setCompareMode(!compareMode)}
           className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"
         >
-          {compareMode ? 'Disable Compare Mode' : 'Enable Compare Mode'}
+          {compareMode ? 'Disable Compare State' : 'Enable Compare State'}
         </button>
       </div>
       <div className="mb-6 flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-6">
@@ -527,7 +527,7 @@ const FlightInYear: React.FC = () => {
             id="season-selection"
             value={season}
             onChange={(e) => setSeason(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+            className="h-[42px] px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
           >
             <option value="All">All Seasons</option>
             <option value="Spring">Spring</option>
