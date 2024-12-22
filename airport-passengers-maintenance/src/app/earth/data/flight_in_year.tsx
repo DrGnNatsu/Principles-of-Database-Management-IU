@@ -110,8 +110,8 @@ const FlightInYear: React.FC = () => {
   const [season, setSeason] = useState("All");
   
   const [compareMode, setCompareMode] = useState(false);
-  const [selectedState, setSelectedState] = useState<string>('Albania'); // For single selection
-  const [selectedStates, setSelectedStates] = useState<string[]>([]); // For multiple selection
+  const [selectedState, setSelectedState] = useState<string>('Total Network Manager Area');
+  const [addedStates, setAddedStates] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -161,7 +161,7 @@ const FlightInYear: React.FC = () => {
     const filteredData = dataset.filter(d => {
       const parsedDate = parseDate(d.Day);
       if (!parsedDate) return false;
-      return (compareMode ? selectedStates : [selectedState]).includes(d.Entity) && 
+      return addedStates.includes(d.Entity) && 
         (season === 'All' || getSeasonFromDate(parsedDate) === season);
     });
 
@@ -372,7 +372,6 @@ const FlightInYear: React.FC = () => {
       .curve(d3.curveMonotoneX);
 
     // Create initial path
- 
     const path = svg.append("path")
       .datum(data)
       .attr("class", "linePath")
@@ -410,7 +409,7 @@ const FlightInYear: React.FC = () => {
         .style("opacity", 1);
     }, 0);
 
-  }, [dataset, selectedState, selectedStates, season, compareMode]); // Add season to dependencies
+  }, [dataset, selectedState, addedStates, season, compareMode]); // Add season to dependencies
 
   return (
     <div className="w-full flex flex-col">
@@ -451,27 +450,49 @@ const FlightInYear: React.FC = () => {
           <label htmlFor="state-selection" className="mb-2 text-lg font-medium text-black">
             State:
           </label>
-          <select
-            id="state-selection"
-            multiple={compareMode}
-            value={compareMode ? selectedStates : selectedState}
-            onChange={(e) => {
-              if (compareMode) {
-                const values = Array.from(e.target.selectedOptions).map(opt => opt.value);
-                setSelectedStates(values);
-              } else {
-                setSelectedState(e.target.value);
-                setSelectedStates([e.target.value]);
-              }
-            }}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
-          >
-            {[...new Set(dataset.map((d) => d.Entity))].map((state) => (
-              <option key={state} value={state}>
-                {state}
-              </option>
-            ))}
-          </select>
+          <div className="flex gap-2 h-[42px]"> {/* Set fixed height container */}
+            <select
+              id="state-selection"
+              value={selectedState}
+              onChange={(e) => setSelectedState(e.target.value)}
+              className="h-full px-4 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
+            >
+              <option value="">Select a state</option>
+              {[...new Set(dataset.map((d) => d.Entity))].map((state) => (
+                <option key={state} value={state}>
+                  {state}
+                </option>
+              ))}
+            </select>
+            {compareMode && (
+              <button
+                onClick={() => {
+                  if (selectedState && !addedStates.includes(selectedState)) {
+                    setAddedStates([...addedStates, selectedState]);
+                  }
+                }}
+                className="h-full px-4 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Add State
+              </button>
+            )}
+          </div>
+          
+          {compareMode && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {addedStates.map(state => (
+                <div key={state} className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
+                  <span>{state}</span>
+                  <button
+                    onClick={() => setAddedStates(addedStates.filter(s => s !== state))}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Season Selection */}
