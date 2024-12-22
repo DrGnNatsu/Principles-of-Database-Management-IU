@@ -144,21 +144,25 @@ const ZoomChart: React.FC = () => {
       .sort((a, b) => a.Date.getTime() - b.Date.getTime());
 
     // Create scales
-    const x = d3.scaleBand()
-      .domain(data.map(d => d.Day))
-      .range([0, width])
-      .padding(0.1);
+    const x = d3.scaleTime()
+      .domain(d3.extent(data, d => d.Date) as [Date, Date])
+      .range([0, width]);
 
     const y = d3.scaleLinear()
       .domain([0, d3.max(data, d => d.Flights) || 0])
       .range([height, 0])
       .nice();
 
+    // Calculate bar width based on time intervals
+    const barWidth = width / data.length * 0.8;
+
     // Add X axis
     svg.append("g")
+      .attr("class", "x-axis") // Add this line
       .attr("transform", `translate(0,${height})`)
       .call(d3.axisBottom(x)
-        .tickFormat((d, i) => i % 7 === 0 ? d as string : ''))
+        .ticks(10)
+        .tickFormat(d3.timeFormat("%d/%m/%y")))
       .selectAll("text")
       .style("text-anchor", "end")
       .style("font-size", "12px")
@@ -166,8 +170,7 @@ const ZoomChart: React.FC = () => {
       .style("font-weight", "bold")
       .attr("dx", "-.8em")
       .attr("dy", ".15em")
-      .attr("transform", "rotate(-45)")
-      .style("font-size", "12px");
+      .attr("transform", "rotate(-45)");
 
     // Add Y axis
     svg.append("g")
@@ -205,27 +208,31 @@ const ZoomChart: React.FC = () => {
         const { transform } = event;
 
         // Update x scale
-        const newXRange = x.range().map(r => transform.applyX(r));
-        const newX = x.copy().range(newXRange);
+        const newX = transform.rescaleX(x);
 
         // Update y scale
         const newYScale = transform.rescaleY(y);
 
         // Update bars with new scales
         svg.selectAll<SVGRectElement, ChartDataPoint>(".bar")
-          .attr("x", d => newX(d.Day) ?? 0)
+          .attr("x", d => newX(d.Date))
           .attr("y", d => newYScale(d.Flights))
-          .attr("width", newX.bandwidth())
+          .attr("width", barWidth * transform.k)
           .attr("height", d => height - newYScale(d.Flights));
 
         // Update X axis
-        svg.select<SVGGElement>(".x-axis")
-          .call(d3.axisBottom(newX))
+        svg.select(".x-axis")
+          .call(d3.axisBottom(newX)
+            .ticks(10)
+            .tickFormat(d3.timeFormat("%d/%m/%y")))
           .selectAll("text")
-          .style("text-anchor", "end")
-          .attr("dx", "-.8em")
-          .attr("dy", ".15em")
-          .attr("transform", "rotate(-45)");
+            .style("text-anchor", "end")
+            .style("font-size", "12px")
+            .style("color", "black")
+            .style("font-weight", "bold")
+            .attr("dx", "-.8em")
+            .attr("dy", ".15em")
+            .attr("transform", "rotate(-45)");
 
         // Update Y axis with grid lines
         svg.select<SVGGElement>(".y-axis")
@@ -253,9 +260,9 @@ const ZoomChart: React.FC = () => {
       .data(data)
       .join("rect")
       .attr("class", "bar")
-      .attr("x", d => x(d.Day) || 0)
+      .attr("x", d => x(d.Date))
       .attr("y", d => y(d.Flights))
-      .attr("width", x.bandwidth())
+      .attr("width", barWidth)
       .attr("height", d => height - y(d.Flights))
       .attr("fill", "steelblue")
       .on("mouseover", (event, d) => {
@@ -272,10 +279,10 @@ const ZoomChart: React.FC = () => {
           .style("left", `${event.pageX + 10}px`)
           .style("top", `${event.pageY - 28}px`)
           .html(`
-            <div>
+            <div style="font-size: 16px;">
               <div style="font-weight: bold; margin-bottom: 5px;">${d.Entity}</div>
-              <div>Date: ${d.Day}</div>
-              <div>Flights: ${d.Flights.toLocaleString()}</div>
+              <div>Date: <strong>${d.Day}</strong></div>
+              <div>Flights: <strong>${d.Flights.toLocaleString()}</strong></div>
             </div>
           `);
       })
