@@ -107,11 +107,11 @@ const FlightInYear: React.FC = () => {
   const [dataset, setDataset] = useState<DataPoint[]>([]);
   
   const [year, setYear] = useState("2023");
+  const [selectedState, setSelectedState] = useState("Total Network Manager Area");
   const [season, setSeason] = useState("All");
   
   const [compareMode, setCompareMode] = useState(false);
-  const [selectedState, setSelectedState] = useState<string>('Albania'); // For single selection
-  const [selectedStates, setSelectedStates] = useState<string[]>([]); // For multiple selection
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([selectedState]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -161,7 +161,7 @@ const FlightInYear: React.FC = () => {
     const filteredData = dataset.filter(d => {
       const parsedDate = parseDate(d.Day);
       if (!parsedDate) return false;
-      return (compareMode ? selectedStates : [selectedState]).includes(d.Entity) && 
+      return selectedCountries.includes(d.Entity) && 
         (season === 'All' || getSeasonFromDate(parsedDate) === season);
     });
 
@@ -410,7 +410,7 @@ const FlightInYear: React.FC = () => {
         .style("opacity", 1);
     }, 0);
 
-  }, [dataset, selectedState, selectedStates, season, compareMode]); // Add season to dependencies
+  }, [dataset, selectedCountries, season]); // Add season to dependencies
 
   return (
     <div className="w-full flex flex-col">
@@ -454,15 +454,10 @@ const FlightInYear: React.FC = () => {
           <select
             id="state-selection"
             multiple={compareMode}
-            value={compareMode ? selectedStates : selectedState}
+            value={selectedCountries}
             onChange={(e) => {
-              if (compareMode) {
-                const values = Array.from(e.target.selectedOptions).map(opt => opt.value);
-                setSelectedStates(values);
-              } else {
-                setSelectedState(e.target.value);
-                setSelectedStates([e.target.value]);
-              }
+              const values = Array.from(e.target.selectedOptions).map(opt => opt.value);
+              setSelectedCountries(values);
             }}
             className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
           >
