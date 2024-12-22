@@ -92,7 +92,7 @@ const getSeasonFromDate = (date: Date): string => {
   const isDateInRange = (month: number, day: number, range: SeasonRange): boolean => {
     const currentDate = month * 100 + day;
     const startDate = range.start.month * 100 + range.start.day;
-    const endDate = range.end.month * 100 + range.end.day;
+    const endDate = range.end.month * 100 + day;
     return currentDate >= startDate && currentDate <= endDate;
   };
 
@@ -245,7 +245,7 @@ const FlightInYear: React.FC = () => {
       .y(d => y(d.Flights))
       .curve(d3.curveMonotoneX);
 
-    const color = d3.scaleOrdinal(d3.schemeCategory10);
+    const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
     // Group data by country
     const dataByCountry = d3.group(filteredData, d => d.Entity);
@@ -256,7 +256,7 @@ const FlightInYear: React.FC = () => {
         .datum(stateData)
         .attr("class", `line-${state.replace(/\s+/g, '-')}`)
         .attr("fill", "none")
-        .attr("stroke", color(state))
+        .attr("stroke", colorScale(state))
         .attr("stroke-width", 2)
         .attr("d", line as any);
 
@@ -339,39 +339,27 @@ const FlightInYear: React.FC = () => {
       .style("font-size", "16px")
       .style("font-weight", "bold");
 
+
+    // After data filtering and before line creation
+    const dataByState = d3.group(data, d => d.Entity);
+
     // Line generator definition
     const lineGenerator = d3.line<ChartDataPoint>()
       .x(d => x(d.Date))
       .y(d => y(d.Flights))
       .curve(d3.curveMonotoneX);
 
-    // Create initial path
-    const path = svg.append("path")
-      .datum(data)
-      .attr("class", "linePath")
-      .attr("fill", "none")
-      .attr("stroke", "steelblue")
-      .attr("stroke-width", season === 'All' ? 1 : 3)
-      .attr("d", lineGenerator)
-      .attr("stroke-dasharray", function() {
-        const totalLength = (this as SVGPathElement).getTotalLength();
-        return `${totalLength} ${totalLength}`;
-      })
-      .attr("stroke-dashoffset", function() {
-        const totalLength = (this as SVGPathElement).getTotalLength();
-        return totalLength;
-      })
-      .style("opacity", 0); // Ensure the path is visible for transition
+    // Create lines for each state
+    dataByState.forEach((stateData, state) => {
+      const path = svg.append("path")
+        .datum(stateData)
+        .attr("class", `line-${state.replace(/\s+/g, '-')}`)
+        .attr("fill", "none")
+        .attr("stroke", colorScale(state))
+        .attr("stroke-width", season === 'All' ? 1 : 3)
+        .attr("d", lineGenerator);
 
-    // Transition to animate the drawing of the line
-    path.transition()
-      .duration(2000)
-      .ease(d3.easeLinear)
-      .attr("stroke-dashoffset", 0);
-
-    // Calculate length for animation
-    setTimeout(() => {
-      path.attr("d", lineGenerator);
+      // Add line animation
       const totalLength = path.node()?.getTotalLength() || 0;
       path
         .attr("stroke-dasharray", `${totalLength} ${totalLength}`)
@@ -379,9 +367,8 @@ const FlightInYear: React.FC = () => {
         .transition()
         .duration(2000)
         .ease(d3.easeLinear)
-        .attr("stroke-dashoffset", 0)
-        .style("opacity", 1);
-    }, 0);
+        .attr("stroke-dashoffset", 0);
+    });
 
   }, [dataset, selectedState, addedStates, season, compareMode]); // Add season to dependencies
 
