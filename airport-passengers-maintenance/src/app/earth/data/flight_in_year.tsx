@@ -317,35 +317,50 @@ const FlightInYear: React.FC = () => {
       .style("font-size", "16px")
       .style("font-weight", "bold");
 
+    // Line generator definition
     const lineGenerator = d3.line<ChartDataPoint>()
       .x(d => x(d.Date))
       .y(d => y(d.Flights))
-      .curve(d3.curveMonotoneX); 
+      .curve(d3.curveMonotoneX);
 
-    svg.selectAll(".linePath")
-      .data([data])
-      .join(
-        enter => enter.append("path")
-          .attr("class", "linePath")
-          .attr("fill", "none")
-          .attr("stroke", "steelblue")
-          .attr("stroke-width", 2)
-          .attr("d", lineGenerator)
-          .call(path => {
-            const totalLength = path.node()?.getTotalLength() || 0;
-            path
-              .attr("stroke-dasharray", `${totalLength} ${totalLength}`)
-              .attr("stroke-dashoffset", totalLength)
-              .transition()
-              .duration(2000)
-              .attr("stroke-dashoffset", 0);
-          }),
-        update => update
-          .transition()
-          .duration(2000)
-          .attr("d", lineGenerator),
-        exit => exit.remove()
-      );
+    // Create initial path
+ 
+    const path = svg.append("path")
+      .datum(data)
+      .attr("class", "linePath")
+      .attr("fill", "none")
+      .attr("stroke", "steelblue")
+      .attr("stroke-width", 2)
+      .attr("d", lineGenerator)
+      .attr("stroke-dasharray", function() {
+        const totalLength = (this as SVGPathElement).getTotalLength();
+        return `${totalLength} ${totalLength}`;
+      })
+      .attr("stroke-dashoffset", function() {
+        const totalLength = (this as SVGPathElement).getTotalLength();
+        return totalLength;
+      })
+      .style("opacity", 0); // Ensure the path is visible for transition
+
+    // Transition to animate the drawing of the line
+    path.transition()
+      .duration(2000)
+      .ease(d3.easeLinear)
+      .attr("stroke-dashoffset", 0);
+
+    // Calculate length for animation
+    setTimeout(() => {
+      path.attr("d", lineGenerator);
+      const totalLength = path.node()?.getTotalLength() || 0;
+      path
+        .attr("stroke-dasharray", `${totalLength} ${totalLength}`)
+        .attr("stroke-dashoffset", totalLength)
+        .transition()
+        .duration(2000)
+        .ease(d3.easeLinear)
+        .attr("stroke-dashoffset", 0)
+        .style("opacity", 1);
+    }, 0);
 
   }, [dataset, selectedState, season]); // Add season to dependencies
 
