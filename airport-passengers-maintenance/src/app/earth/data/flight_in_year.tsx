@@ -105,9 +105,10 @@ const getSeasonFromDate = (date: Date): string => {
 
 const FlightInYear: React.FC = () => {
   const [dataset, setDataset] = useState<DataPoint[]>([]);
-  const [year, setYear] = useState("2020");
+  const [year, setYear] = useState("2023");
   const [selectedState, setSelectedState] = useState("Total Network Manager Area");
   const [season, setSeason] = useState("All");
+  const [compareMode, setCompareMode] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -260,6 +261,8 @@ const FlightInYear: React.FC = () => {
       .style("fill", "steelblue")
       .on("mouseover", (event, d) => {
         tooltip
+          .transition()
+          .duration(200)
           .style("opacity", 0.9)
           .style("display", "block")
           .style("background-color", "rgba(0, 0, 0, 0.8)")
@@ -270,7 +273,7 @@ const FlightInYear: React.FC = () => {
           .style("box-shadow", "0 4px 6px rgba(0, 0, 0, 0.1)")
           .style("left", `${event.pageX + 10}px`)
           .style("top", `${event.pageY - 28}px`)
-          .html(`
+          d3.select("#tooltip").html(`
             <div style="font-size: 16px;">
               <div style="font-weight: bold; margin-bottom: 5px;">${d.Entity}</div>
               <div>Date: <strong>${d.Day}</strong></div>
@@ -283,6 +286,11 @@ const FlightInYear: React.FC = () => {
           .duration(200)
           .attr("r", 8)
           .style("fill", "#ff4444");
+      })
+      .on("mousemove", (event) => {
+        tooltip
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY + 10) + "px");
       })
       .on("mouseout", (event) => {
         tooltip
@@ -309,10 +317,52 @@ const FlightInYear: React.FC = () => {
       .style("font-size", "16px")
       .style("font-weight", "bold");
 
+    const lineGenerator = d3.line<ChartDataPoint>()
+      .x(d => x(d.Date))
+      .y(d => y(d.Flights))
+      .curve(d3.curveMonotoneX); 
+
+    svg.selectAll(".linePath")
+      .data([data])
+      .join(
+        enter => enter.append("path")
+          .attr("class", "linePath")
+          .attr("fill", "none")
+          .attr("stroke", "steelblue")
+          .attr("stroke-width", 2)
+          .attr("d", lineGenerator)
+          .call(path => {
+            const totalLength = path.node()?.getTotalLength() || 0;
+            path
+              .attr("stroke-dasharray", `${totalLength} ${totalLength}`)
+              .attr("stroke-dashoffset", totalLength)
+              .transition()
+              .duration(2000)
+              .attr("stroke-dashoffset", 0);
+          }),
+        update => update
+          .transition()
+          .duration(2000)
+          .attr("d", lineGenerator),
+        exit => exit.remove()
+      );
+
   }, [dataset, selectedState, season]); // Add season to dependencies
 
   return (
     <div className="w-full flex flex-col">
+      <h2 className="text-2xl font-bold mb-4 text-black text-center">Number of Flights in {year}</h2>
+      <p className="text-md text-center text-gray-600 mb-4">
+        This chart displays the total number of flights across different dates.
+      </p>
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => setCompareMode(!compareMode)}
+          className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"
+        >
+          {compareMode ? 'Disable Compare Mode' : 'Enable Compare Mode'}
+        </button>
+      </div>
       <div className="mb-6 flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-6">
         
         {/* Year Selection */}
@@ -372,7 +422,6 @@ const FlightInYear: React.FC = () => {
         </div>
       </div>
 
-      
       <div 
         id="line-chart" 
         className="w-full h-[600px] bg-white rounded-lg overflow-hidden"
