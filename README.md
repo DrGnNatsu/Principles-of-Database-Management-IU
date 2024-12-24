@@ -14,7 +14,7 @@ This project is a flight booking application built with a Next.js frontend and a
 * **Frontend:** Next.js, React, JavaScript/TypeScript
 * **Backend:** Java Spring Boot, Spring Data JPA, REST APIs, Maven
 * **Database:** [Specify the database used, e.g., MySQL]  Include version if relevant.
-* **Other:** [List any other relevant technologies, e.g., deployment tools (Docker, Heroku)]
+* **Other:** [List any other relevant technologies, e.g., deployment tools (Docker)]
 
 ## Getting Started
 
@@ -22,10 +22,10 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-* Java JDK [Specify Version, e.g., 17]
-* Node.js and npm/yarn [Specify versions if necessary]
-* Maven [Specify version if necessary]
-* [Specify database and version if needed, e.g., MySQL 8.0] - Ensure it's running.
+* Java JDK [Version 17]
+* Node.js and npm/yarn 
+* Maven 
+* [MySQL 8.0] - Ensure it's running.
 
 
 ### Installing
@@ -40,9 +40,11 @@ These instructions will get you a copy of the project up and running on your loc
    ```bash
    cd backend
    
-run mainApplication file
+--> run mainApplication file
 
-4. Run the Front end
+3. Run the Front end
    ```bash
-    cd airport-passenger-maintenance
+   cd airport-passengers-maintenance
+   npm install #
+   npm run dev
 
