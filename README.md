@@ -8,14 +8,13 @@ This project is a flight booking application built with a Next.js frontend and a
 * View Flight Details: View detailed information about available flights, including pricing, seat availability, and flight duration.
 * Book Flights: Select desired flights, choose seats, and complete the booking process.
 * Manage Bookings: View and manage existing bookings, including cancellation and modification options (if implemented).
-* User Authentication: Secure user accounts and authentication (implementation details may vary).
 
 ## Technologies Used
 
 * **Frontend:** Next.js, React, JavaScript/TypeScript
 * **Backend:** Java Spring Boot, Spring Data JPA, REST APIs, Maven
-* **Database:** [Specify the database used, e.g., MySQL, PostgreSQL]  Include version if relevant.
-* **Other:** [List any other relevant technologies, e.g., testing frameworks (JUnit, Jest), deployment tools (Docker, Heroku)]
+* **Database:** [Specify the database used, e.g., MySQL]  Include version if relevant.
+* **Other:** [List any other relevant technologies, e.g., deployment tools (Docker, Heroku)]
 
 ## Getting Started
 
