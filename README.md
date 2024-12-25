@@ -38,8 +38,10 @@ These instructions will get you a copy of the project up and running on your loc
 
 2. Run the backend
    ```bash
+   docker pull mysql/mysql-server:latest
+   docker run -e "ACCEPT_EULA=1" -e "MSSQL_SA_PASSWORD=123456Aa@$" -e "MSSQL_PID=Developer" -e "MSSQL_USER=root" -p 1433:1433 -d --name=pdmdb mysql/mysql-server:latest
+   docker-compose up -d
    cd backend
-   
 --> run mainApplication file
 
 3. Run the Front end
@@ -48,3 +50,12 @@ These instructions will get you a copy of the project up and running on your loc
    npm install #
    npm run dev
 
+---
+## Contribution of the Team
+| Members                    | Positions                                                  | Contribution
+| :--------                  | :-------                                                   |:-------:
+| Pham Hoang Phuong          | Project Manager (Leader), Full-stack, Design Website       | 20 %
+| Pham Anh Khoi              | Database Design, Front-end, Report                         | 20 %
+| Nguyen Vu Thanh Tinh       | Database Design, Report                                    | 20 %
+| Dang Ngoc Thai Son         | Front-end                                                  | 20 %
+| Hoang An Thien             | Front-end                                                  | 20 %
